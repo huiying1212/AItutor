@@ -214,7 +214,7 @@ class MultimodalKnowledgeRetriever:
         
         return image_results, text_results
     
-    def multimodal_search(self, query: str, top_k: int = 10, text_weight: float = 0.6, image_weight: float = 0.4) -> Dict:
+    def multimodal_search(self, query: str, top_k: int = 10, text_weight: float = 0.5, image_weight: float = 0.5) -> Dict:
         """
         多模态综合搜索
         
@@ -227,33 +227,61 @@ class MultimodalKnowledgeRetriever:
         Returns:
             综合搜索结果
         """
-        # 搜索文本
+        # 搜索文本和图片
         text_results = self.search_text(query, top_k)
-        
-        # 搜索图片
         image_results = self.search_images(query, top_k)
         
-        # 调整权重
+        # 归一化得分 - 分别计算每种模态的最高分数
+        max_text_score = max([r.get('similarity_score', 0.0) for r in text_results]) if text_results else 1.0
+        max_image_score = max([r.get('similarity_score', 0.0) for r in image_results]) if image_results else 1.0
+        
+        # 避免除零错误
+        max_text_score = max(max_text_score, 0.001)
+        max_image_score = max(max_image_score, 0.001)
+        
+        # 计算标准化权重分数
         for result in text_results:
-            result['weighted_score'] = result.get('similarity_score', 0.0) * text_weight
+            normalized_score = result.get('similarity_score', 0.0) / max_text_score
+            result['weighted_score'] = normalized_score * text_weight
             
         for result in image_results:
-            result['weighted_score'] = result.get('similarity_score', 0.0) * image_weight
+            normalized_score = result.get('similarity_score', 0.0) / max_image_score  
+            result['weighted_score'] = normalized_score * image_weight
         
-        # 组合并排序结果
+        # 组合结果，确保包含两种类型
         all_results = text_results + image_results
         try:
             all_results.sort(key=lambda x: x.get('weighted_score', 0.0), reverse=True)
         except Exception as e:
             print(f"排序错误: {e}")
-            # 如果排序失败，至少返回原始结果
-            pass
+        
+        # 确保结果中包含两种类型 - 取前top_k个，但至少包含一些图片结果
+        combined_results = []
+        text_count = 0
+        image_count = 0
+        
+        # 先添加高分结果
+        for result in all_results:
+            if len(combined_results) >= top_k:
+                break
+            if result.get('type') == 'text':
+                text_count += 1
+            else:
+                image_count += 1
+            combined_results.append(result)
+        
+        # 如果没有图片结果但有图片数据，至少添加一个图片结果
+        if image_count == 0 and len(image_results) > 0 and len(combined_results) < top_k:
+            # 移除最后一个文本结果，添加最好的图片结果
+            if text_count > 0:
+                combined_results = combined_results[:-1]
+            combined_results.append(image_results[0])
         
         return {
             'query': query,
             'text_results': text_results,
             'image_results': image_results,
-            'combined_results': all_results[:top_k],
+            'combined_results': combined_results,
             'total_results': len(all_results)
         }
     
@@ -268,7 +296,7 @@ class MultimodalKnowledgeRetriever:
         Returns:
             RAG上下文信息
         """
-        search_results = self.multimodal_search(query, top_k=10)
+        search_results = self.multimodal_search(query, top_k=10, text_weight=0.5, image_weight=0.5)
         
         # 提取文本上下文
         text_context = []

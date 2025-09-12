@@ -33,31 +33,9 @@ interface SearchResults {
   total_results?: number;
 }
 
-interface RAGContext {
-  query: string;
-  text_context: Array<{
-    content: string;
-    source: string;
-    similarity: number;
-  }>;
-  image_context: Array<{
-    image_url: string;
-    description: string;
-    source: string;
-    similarity: number;
-  }>;
-  context_stats: {
-    text_chunks: number;
-    total_text_length: number;
-    related_images: number;
-  };
-}
-
 const KnowledgeSearch: React.FC = () => {
   const [query, setQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<'text' | 'image' | 'multimodal' | 'rag'>('multimodal');
   const [results, setResults] = useState<SearchResults | null>(null);
-  const [ragContext, setRagContext] = useState<RAGContext | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -78,9 +56,9 @@ const KnowledgeSearch: React.FC = () => {
         },
         body: JSON.stringify({
           query: query.trim(),
-          top_k: 10,
-          min_score: 0.2,
-          mode: searchMode,
+          top_k: 15,
+          min_score: 0.15,
+          mode: 'multimodal',
         }),
       });
 
@@ -91,30 +69,7 @@ const KnowledgeSearch: React.FC = () => {
       const data = await response.json();
       
       if (data.success) {
-        if (searchMode === 'rag') {
-          setRagContext(data.data);
-          setResults(null);
-        } else {
-          // 处理新的响应格式
-          const responseData = data.data;
-          if (responseData.mode === 'text') {
-            setResults({
-              query: responseData.query,
-              text_results: responseData.results,
-              total_results: responseData.total_count
-            });
-          } else if (responseData.mode === 'image') {
-            setResults({
-              query: responseData.query,
-              image_results: responseData.results,
-              total_results: responseData.total_count
-            });
-          } else {
-            // multimodal格式保持不变
-            setResults(responseData);
-          }
-          setRagContext(null);
-        }
+        setResults(data.data);
       } else {
         throw new Error(data.message || '搜索失败');
       }
@@ -123,7 +78,7 @@ const KnowledgeSearch: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [query, searchMode]);
+  }, [query]);
 
   const handleImageSearch = useCallback(async () => {
     if (!selectedFile) return;
@@ -134,8 +89,8 @@ const KnowledgeSearch: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('top_k', '10');
-      formData.append('min_score', '0.2');
+      formData.append('top_k', '15');
+      formData.append('min_score', '0.15');
 
       const response = await fetch(`${API_BASE}/search/image`, {
         method: 'POST',
@@ -149,12 +104,28 @@ const KnowledgeSearch: React.FC = () => {
       const data = await response.json();
       
       if (data.success) {
+        const imageResults = data.data.similar_images || [];
+        const textResults = data.data.related_texts || [];
+        
+        const typedImageResults = imageResults.map((result: any) => ({
+          ...result,
+          type: 'image'
+        }));
+        const typedTextResults = textResults.map((result: any) => ({
+          ...result,
+          type: 'text'
+        }));
+        
+        const allResults = [...typedImageResults, ...typedTextResults];
+        allResults.sort((a, b) => (b.similarity_score || 0) - (a.similarity_score || 0));
+        
         setResults({
           query: `图片搜索: ${selectedFile.name}`,
-          image_results: data.data.similar_images,
-          text_results: data.data.related_texts,
+          image_results: typedImageResults,
+          text_results: typedTextResults,
+          combined_results: allResults,
+          total_results: allResults.length
         });
-        setRagContext(null);
       } else {
         throw new Error(data.message || '图片搜索失败');
       }
@@ -172,156 +143,72 @@ const KnowledgeSearch: React.FC = () => {
     }
   };
 
-  const renderTextResult = (result: TextResult, index: number) => (
-    <div key={`text-${index}`} className="bg-white rounded-lg shadow-md p-4 mb-4">
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center text-blue-600">
-          <FileText className="w-4 h-4 mr-2" />
-          <span className="font-semibold">Chapter {result.chapter_number}: {result.chapter_name}</span>
-        </div>
-        <span className="text-sm text-gray-500">
-          相似度: {(result.similarity_score * 100).toFixed(1)}%
-        </span>
-      </div>
-      <p className="text-gray-700 text-sm leading-relaxed">
-        {result.text.length > 300 ? `${result.text.substring(0, 300)}...` : result.text}
-      </p>
-    </div>
-  );
-
-  const renderImageResult = (result: ImageResult, index: number) => (
-    <div key={`image-${index}`} className="bg-white rounded-lg shadow-md p-4 mb-4">
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center text-green-600">
-          <Image className="w-4 h-4 mr-2" />
-          <span className="font-semibold">Chapter {result.chapter_number}: {result.chapter_name}</span>
-        </div>
-        <span className="text-sm text-gray-500">
-          相似度: {(result.similarity_score * 100).toFixed(1)}%
-        </span>
-      </div>
-      <div className="flex flex-col md:flex-row gap-4">
-        <img 
-          src={`/example-structuredDATA/images/${result.image_url}`}
-          alt={result.image_description}
-          className="w-full md:w-48 h-32 object-cover rounded-lg"
-          onError={(e) => {
-            console.log(`图片加载失败: ${result.image_url}`);
-            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEzMyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuWbvueJh+aXoOazleWKoOi9vTwvdGV4dD48L3N2Zz4=';
-          }}
-        />
-        <p className="text-gray-700 text-sm flex-1">
-          {result.image_description}
-        </p>
-      </div>
-    </div>
-  );
-
-  const renderRAGContext = (context: RAGContext) => (
-    <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-purple-800 mb-4">RAG 上下文分析</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-blue-600">{context.context_stats.text_chunks}</div>
-          <div className="text-sm text-gray-600">相关文本片段</div>
-        </div>
-        <div className="bg-white rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-green-600">{context.context_stats.related_images}</div>
-          <div className="text-sm text-gray-600">相关图片</div>
-        </div>
-        <div className="bg-white rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-purple-600">{context.context_stats.total_text_length}</div>
-          <div className="text-sm text-gray-600">上下文字符数</div>
-        </div>
-      </div>
-
-      {context.text_context.length > 0 && (
-        <div className="mb-6">
-          <h4 className="font-semibold text-gray-800 mb-3">相关文本内容</h4>
-          <div className="space-y-3">
-            {context.text_context.map((item, index) => (
-              <div key={index} className="bg-white rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-blue-600">{item.source}</span>
-                  <span className="text-xs text-gray-500">匹配度: {(item.similarity * 100).toFixed(1)}%</span>
-                </div>
-                <p className="text-sm text-gray-700">
-                  {item.content.length > 200 ? `${item.content.substring(0, 200)}...` : item.content}
-                </p>
-              </div>
-            ))}
+  const renderResult = (result: TextResult | ImageResult, index: number) => {
+    const isText = result.type === 'text';
+    const IconComponent = isText ? FileText : Image;
+    const colorClass = isText ? 'text-blue-600' : 'text-green-600';
+    
+    return (
+      <div key={`${result.type}-${index}`} className="bg-white rounded-lg shadow-md p-4 mb-4 hover:shadow-lg transition-shadow">
+        <div className="flex items-start justify-between mb-3">
+          <div className={`flex items-center ${colorClass}`}>
+            <IconComponent className="w-4 h-4 mr-2" />
+            <span className="font-semibold">
+              Chapter {result.chapter_number}: {result.chapter_name}
+            </span>
+            <span className="ml-2 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+              {isText ? '文本' : '图片'}
+            </span>
           </div>
+          <span className="text-sm text-gray-500">
+            相似度: {(result.similarity_score * 100).toFixed(1)}%
+          </span>
         </div>
-      )}
-
-      {context.image_context.length > 0 && (
-        <div>
-          <h4 className="font-semibold text-gray-800 mb-3">相关图片</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {context.image_context.map((item, index) => (
-              <div key={index} className="bg-white rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-green-600">{item.source}</span>
-                  <span className="text-xs text-gray-500">匹配度: {(item.similarity * 100).toFixed(1)}%</span>
-                </div>
-                <img 
-                  src={`/example-structuredDATA/images/${item.image_url}`}
-                  alt={item.description}
-                  className="w-full h-32 object-cover rounded-lg mb-2"
-                  onError={(e) => {
-                    console.log(`RAG图片加载失败: ${item.image_url}`);
-                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEzMyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuWbvueJh+aXoOazleWKoOi9vTwvdGV4dD48L3N2Zz4=';
-                  }}
-                />
-                <p className="text-sm text-gray-700">{item.description}</p>
-              </div>
-            ))}
+        
+        {isText ? (
+          <p className="text-gray-700 text-sm leading-relaxed">
+            {(result as TextResult).text.length > 300 
+              ? `${(result as TextResult).text.substring(0, 300)}...` 
+              : (result as TextResult).text
+            }
+          </p>
+        ) : (
+          <div className="flex flex-col md:flex-row gap-4">
+            <img 
+              src={`/example-structuredDATA/images/${(result as ImageResult).image_url}`}
+              alt={(result as ImageResult).image_description}
+              className="w-full md:w-48 h-32 object-cover rounded-lg"
+              onError={(e) => {
+                console.log(`图片加载失败: ${(result as ImageResult).image_url}`);
+                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEzMyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuWbvueJh+aXoOazleWKoOi9vTwvdGV4dD48L3N2Zz4=';
+              }}
+            />
+            <p className="text-gray-700 text-sm flex-1">
+              {(result as ImageResult).image_description}
+            </p>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">多模态知识检索</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">智能知识检索</h2>
+        <p className="text-gray-600 mb-6">
+          输入文本或上传图片进行搜索，系统将自动返回所有相关的文本和图片内容
+        </p>
         
-        {/* 搜索模式选择 */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">搜索模式</label>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { value: 'text', label: '文本搜索', icon: FileText },
-              { value: 'image', label: '图片搜索', icon: Image },
-              { value: 'multimodal', label: '多模态搜索', icon: Search },
-              { value: 'rag', label: 'RAG上下文', icon: AlertCircle },
-            ].map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setSearchMode(value as any)}
-                className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  searchMode === value
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Icon className="w-4 h-4 mr-2" />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* 文本搜索输入 */}
         <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">文本搜索</label>
           <div className="flex gap-2">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="输入搜索关键词..."
+              placeholder="输入搜索关键词"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               onKeyPress={(e) => e.key === 'Enter' && handleTextSearch()}
             />
@@ -331,13 +218,14 @@ const KnowledgeSearch: React.FC = () => {
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              <span className="ml-2">搜索</span>
             </button>
           </div>
         </div>
 
         {/* 图片上传 */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">或上传图片进行搜索</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">图片搜索</label>
           <div className="flex gap-2">
             <input
               type="file"
@@ -351,6 +239,7 @@ const KnowledgeSearch: React.FC = () => {
               className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              <span className="ml-2">搜索</span>
             </button>
           </div>
           {selectedFile && (
@@ -370,62 +259,41 @@ const KnowledgeSearch: React.FC = () => {
         )}
       </div>
 
-      {/* 搜索结果 */}
+      {/* 加载状态 */}
       {loading && (
         <div className="text-center py-12">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" />
-          <p className="text-gray-600 mt-2">正在搜索...</p>
-        </div>
-      )}
-
-      {/* RAG上下文结果 */}
-      {ragContext && !loading && (
-        <div className="mb-8">
-          {renderRAGContext(ragContext)}
+          <p className="text-gray-600 mt-2">正在搜索相关内容...</p>
         </div>
       )}
 
       {/* 搜索结果 */}
       {results && !loading && (
         <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            搜索结果 ({results.total_results || (results.text_results?.length || 0) + (results.image_results?.length || 0)} 个)
-          </h3>
-          
-          {/* 综合结果 */}
-          {results.combined_results && (
-            <div className="mb-6">
-              <h4 className="text-lg font-medium text-gray-700 mb-3">综合结果</h4>
-              {results.combined_results.map((result, index) => 
-                result.type === 'text' 
-                  ? renderTextResult(result as TextResult, index)
-                  : renderImageResult(result as ImageResult, index)
-              )}
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-semibold text-gray-800">
+              搜索结果
+            </h3>
+            <div className="text-sm text-gray-600">
+              共找到 {results.total_results || (results.text_results?.length || 0) + (results.image_results?.length || 0)} 个相关结果
             </div>
-          )}
-
-          {/* 分类结果 */}
-          {!results.combined_results && (
-            <>
-              {results.text_results && results.text_results.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-medium text-gray-700 mb-3">文本结果</h4>
-                  {results.text_results.map(renderTextResult)}
-                </div>
-              )}
-
-              {results.image_results && results.image_results.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-medium text-gray-700 mb-3">图片结果</h4>
-                  {results.image_results.map(renderImageResult)}
-                </div>
-              )}
-            </>
+          </div>
+          
+          {/* 统一显示所有结果 */}
+          {results.combined_results && results.combined_results.length > 0 ? (
+            <div className="space-y-4">
+              {results.combined_results.map((result, index) => renderResult(result, index))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {results.text_results?.map((result, index) => renderResult(result, index))}
+              {results.image_results?.map((result, index) => renderResult(result, index))}
+            </div>
           )}
 
           {(!results.text_results?.length && !results.image_results?.length && !results.combined_results?.length) && (
             <div className="text-center py-12">
-              <p className="text-gray-500">未找到相关结果</p>
+              <p className="text-gray-500">未找到相关结果，请尝试其他关键词</p>
             </div>
           )}
         </div>
@@ -434,4 +302,4 @@ const KnowledgeSearch: React.FC = () => {
   );
 };
 
-export default KnowledgeSearch; 
+export default KnowledgeSearch;

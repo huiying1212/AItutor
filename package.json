@@ -10,7 +10,7 @@
     "setup-env": "python scripts/setup.py",
     "build-vector-db": "python scripts/build_vector_database.py",
     "search-knowledge": "python scripts/search_knowledge.py",
-    "start-api": "python start_api.py",
+    "start-api": "python scripts/knowledge_api.py",
     "install-python-deps": "pip install -r requirements.txt",
     "test-system": "python scripts/test_system.py"
   },

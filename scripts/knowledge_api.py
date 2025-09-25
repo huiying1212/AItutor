@@ -272,63 +272,6 @@ async def get_chapter_content(chapter_number: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取章节内容失败: {str(e)}")
 
-@app.post("/rag/generate")
-async def generate_rag_response(request: TextQueryRequest):
-    """生成RAG响应（准备用于LLM）"""
-    if retriever is None:
-        raise HTTPException(status_code=503, detail="检索器未初始化")
-    
-    try:
-        # 获取RAG上下文
-        context = retriever.generate_rag_context(request.query, max_context_length=2000)
-        
-        # 构建RAG提示
-        system_prompt = """你是一个专业的设计历史专家。请基于提供的知识库内容回答用户的问题。
-
-知识库内容包含以下信息：
-"""
-        
-        # 添加文本上下文
-        if context['text_context']:
-            system_prompt += "\n相关文本内容：\n"
-            for i, text_item in enumerate(context['text_context'], 1):
-                system_prompt += f"{i}. 来源：{text_item['source']}\n内容：{text_item['content']}\n\n"
-        
-        # 添加图片上下文
-        if context['image_context']:
-            system_prompt += "\n相关图片：\n"
-            for i, img_item in enumerate(context['image_context'], 1):
-                system_prompt += f"{i}. 图片：{img_item['image_url']}\n描述：{img_item['description']}\n来源：{img_item['source']}\n\n"
-        
-        system_prompt += """
-请基于以上知识库内容回答用户的问题。如果知识库中没有相关信息，请说明无法找到相关内容。
-请确保回答准确、详细且有帮助。
-"""
-        
-        rag_data = {
-            "system_prompt": system_prompt,
-            "user_query": request.query,
-            "context": context,
-            "sources": []
-        }
-        
-        # 收集来源信息
-        sources = set()
-        for text_item in context['text_context']:
-            sources.add(text_item['source'])
-        for img_item in context['image_context']:
-            sources.add(img_item['source'])
-        rag_data['sources'] = list(sources)
-        
-        return SearchResponse(
-            success=True,
-            data=rag_data,
-            message="RAG上下文生成完成"
-        )
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"RAG生成失败: {str(e)}")
-
 if __name__ == "__main__":
     uvicorn.run(
         "knowledge_api:app",

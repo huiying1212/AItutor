@@ -119,6 +119,77 @@ const toolsDefinition = [
       },
       required: ["text"],
     },
+  },
+  {
+    name: "create_mindmap",
+    description: "Create an interactive mind map to summarize conversation topics, concepts, or knowledge structures",
+    parameters: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "The main title/central topic of the mind map",
+        },
+        nodes: {
+          type: "array",
+          description: "Array of key concepts/nodes in the mind map",
+          items: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+                description: "Unique identifier for the node"
+              },
+              keyword: {
+                type: "string",
+                description: "The main keyword/concept for this node"
+              },
+              description: {
+                type: "string",
+                description: "Detailed description of the concept"
+              },
+              otherinfo: {
+                type: "string",
+                description: "Additional information or context"
+              },
+              image: {
+                type: "string",
+                description: "Optional image filename if available from knowledge base"
+              },
+              isExtendedInfo: {
+                type: "number",
+                description: "Flag indicating if this is extended information (0 or 1)",
+                default: 0
+              }
+            },
+            required: ["id", "keyword"]
+          }
+        },
+        connections: {
+          type: "array",
+          description: "Array of connections between nodes",
+          items: {
+            type: "object",
+            properties: {
+              from: {
+                type: "string",
+                description: "Source node ID"
+              },
+              to: {
+                type: "string",
+                description: "Target node ID"
+              },
+              relationship: {
+                type: "string",
+                description: "Description of the relationship between nodes"
+              }
+            },
+            required: ["from", "to", "relationship"]
+          }
+        }
+      },
+      required: ["title", "nodes", "connections"],
+    },
   }
 ];
 
@@ -178,6 +249,7 @@ Tool usage patterns:
 - display_content with images parameter: For any content type that can benefit from visual enhancement
 - highlight_text: To emphasize specific terms during your spoken explanation
 - clear_whiteboard: When switching to a completely different topic
+- create_mindmap: When students ask for conversation summaries, topic overviews, or when explaining complex relationships between concepts. Use this to create interactive visual summaries that show connections between ideas discussed in the conversation.
 
 Your response structure:
 1. Analyze the question and detect the language

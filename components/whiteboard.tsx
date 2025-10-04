@@ -19,6 +19,7 @@ import {
   LineElement,
 } from "chart.js";
 import "highlight.js/styles/github.css";
+import MindMap from "./MindMap";
 
 // Register Chart.js components
 ChartJS.register(
@@ -45,7 +46,7 @@ interface WhiteboardProps {
 interface WhiteboardContent {
   title: string;
   content: string;
-  type: "text" | "chart" | "diagram" | "list" | "images";
+  type: "text" | "chart" | "diagram" | "list" | "images" | "mindmap";
   chart?: {
     chartType: "bar" | "pie" | "line";
     data: { label: string; value: number }[];
@@ -56,6 +57,22 @@ interface WhiteboardContent {
     description: string;
     chapter: string;
   }[];
+  mindMapData?: {
+    title: string;
+    nodes: Array<{
+      id: string;
+      keyword: string;
+      description?: string;
+      otherinfo?: string;
+      image?: string;
+      isExtendedInfo?: number;
+    }>;
+    connections: Array<{
+      from: string;
+      to: string;
+      relationship: string;
+    }>;
+  };
   timestamp: number;
  // Add timestamp to track when slide was created
 }
@@ -113,6 +130,24 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
       case "highlight_text":
         console.log("Highlighting text:", args.text);
         setHighlightedText(args.text || "");
+        break;
+
+      case "create_mindmap":
+        console.log("Creating mind map:", args);
+        const newMindMapContent: WhiteboardContent = {
+          title: args.title || "思维导图",
+          content: "",
+          type: "mindmap",
+          mindMapData: {
+            title: args.title || "思维导图",
+            nodes: args.nodes || [],
+            connections: args.connections || []
+          },
+          timestamp: Date.now(),
+        };
+        
+        // Add new slide to history
+        setSlides(prevSlides => [...prevSlides, newMindMapContent]);
         break;
 
       default:
@@ -361,6 +396,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
           </div>
         </div>
       );
+    }
+
+    if (content.type === "mindmap") {
+      return <MindMap mindMapData={content.mindMapData || null} />;
     }
 
     if (content.type === "images") {

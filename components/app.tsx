@@ -74,7 +74,7 @@ export default function App() {
   }, [reconnectAttempts, dataChannel, startSession]);
 
   // Start a new realtime session
-  async function startSession() {
+  const startSession = useCallback(async () => {
     try {
       if (!isSessionStarted) {
         setIsSessionStarted(true);
@@ -200,10 +200,10 @@ export default function App() {
       setConnectionState('failed');
       throw error;
     }
-  }
+  }, [isSessionStarted, dataChannel, isReconnecting, reconnectTimeout, tracks, audioTransceiver]);
 
   // Stop current session, clean up peer connection and data channel
-  function stopSession() {
+  const stopSession = useCallback(() => {
     // Clear any pending reconnection attempts
     if (reconnectTimeout.current) {
       clearTimeout(reconnectTimeout.current);
@@ -230,7 +230,7 @@ export default function App() {
     setConnectionState('closed');
     setReconnectAttempts(0);
     setIsReconnecting(false);
-  }
+  }, [audioStream]);
 
   // Grabs a new mic track and replaces the placeholder track in the transceiver
   async function startRecording() {

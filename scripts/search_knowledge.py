@@ -33,17 +33,18 @@ class MultimodalKnowledgeRetriever:
         with open(config_file, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
         
-        # 加载CLIP模型
+        # 解析与加载CLIP模型（支持本地路径或Hub模型ID）
         print("加载CLIP模型...")
+        resolved_model_id_or_path = self._resolve_model_id_or_path(model_path)
         try:
             # 优先使用safetensors格式以避免安全问题
-            self.model = CLIPModel.from_pretrained(model_path, use_safetensors=True)
-        except:
+            self.model = CLIPModel.from_pretrained(resolved_model_id_or_path, use_safetensors=True)
+        except Exception:
             # 如果safetensors不可用，降级使用普通格式
             print("Safetensors不可用，使用普通格式...")
-            self.model = CLIPModel.from_pretrained(model_path, use_safetensors=False)
+            self.model = CLIPModel.from_pretrained(resolved_model_id_or_path, use_safetensors=False)
         
-        self.processor = CLIPProcessor.from_pretrained(model_path)
+        self.processor = CLIPProcessor.from_pretrained(resolved_model_id_or_path)
         self.model.to(self.device)
         self.model.eval()
         
@@ -63,6 +64,35 @@ class MultimodalKnowledgeRetriever:
         print(f"数据库加载完成:")
         print(f"  文本片段: {len(self.text_metadata)}")
         print(f"  图片: {len(self.image_metadata)}")
+    
+    def _resolve_model_id_or_path(self, model_path: str) -> str:
+        """将传入的模型路径解析为可用的本地路径或Hub模型ID。
+        优先级：
+          1. 环境变量 CLIP_MODEL_ID（或 HF_CLIP_MODEL_ID）
+          2. 传入路径存在且包含config.json → 作为本地路径使用
+          3. 回退到 Hugging Face Hub ID: "openai/clip-vit-base-patch32"
+        """
+        # 1) 环境变量覆盖
+        env_model_id = os.getenv("CLIP_MODEL_ID") or os.getenv("HF_CLIP_MODEL_ID")
+        if env_model_id:
+            print(f"使用环境变量模型ID: {env_model_id}")
+            return env_model_id
+        
+        # 2) 本地路径存在且看起来像有效模型目录
+        if os.path.isdir(model_path) and os.path.isfile(os.path.join(model_path, "config.json")):
+            print(f"使用本地模型路径: {model_path}")
+            return model_path
+        
+        # 3) 如果传入的参数本身就是一个Hub ID，也直接返回
+        # 简单判断：包含'/'基本可视为命名空间/仓库名
+        if "/" in model_path and not model_path.startswith("./") and not model_path.startswith(".\\"):
+            print(f"使用指定的Hub模型ID: {model_path}")
+            return model_path
+        
+        # 4) 最终回退：默认Hub模型
+        default_id = "openai/clip-vit-base-patch32"
+        print(f"未找到本地模型，回退到Hub模型: {default_id}")
+        return default_id
     
     def _get_device(self, device):
         """确定计算设备"""

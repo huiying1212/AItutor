@@ -31,9 +31,11 @@ async def lifespan(app: FastAPI):
     global retriever
     try:
         print("初始化多模态知识检索器...")
+        # 允许通过环境变量覆盖模型ID或路径
+        model_override = os.getenv("CLIP_MODEL_ID") or os.getenv("HF_CLIP_MODEL_ID") or "./models/clip-vit-base-patch32"
         retriever = MultimodalKnowledgeRetriever(
             database_dir="./vector_database",
-            model_path="./models/clip-vit-base-patch32",
+            model_path=model_override,
             device="auto"
         )
         print("检索器初始化完成")

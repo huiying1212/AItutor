@@ -71,7 +71,7 @@ export default function App() {
       // Try again
       reconnectTimeout.current = setTimeout(autoReconnect, 3000);
     }
-  }, [reconnectAttempts, dataChannel]);
+  }, [reconnectAttempts, dataChannel, startSession]);
 
   // Start a new realtime session
   async function startSession() {
@@ -493,7 +493,7 @@ export default function App() {
       }
       stopSession();
     };
-  }, []);
+  }, [stopSession]);
 
   const handleConnectClick = async () => {
     if (isSessionActive) {

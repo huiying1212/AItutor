@@ -844,11 +844,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            ol: ({node, ...props}) => <div {...props} />,
-                            li: ({node, ...props}) => <div {...props} />,
-                            p: ({node, ...props}) => <div className="inline" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
-                            em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
+                              ol: ({...props}) => <div {...props} />,
+                              li: ({...props}) => <div {...props} />,
+                              p: ({...props}) => <div className="inline" {...props} />,
+                              strong: ({...props}) => <strong className="font-bold text-blue-900" {...props} />,
+                              em: ({...props}) => <em className="italic text-blue-700" {...props} />,
                           }}
                         >
                           {item.replace(/^\d+\.\s*/, '')}
@@ -922,13 +922,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                           blockquote: ({...props}) => (
                             <blockquote className="border-l-4 border-blue-500 pl-3 py-2 bg-blue-50 italic text-gray-700 mb-3 text-sm" {...props} />
                           ),
-                          code: ({...props}) => {
-                            const { children, className } = props;
-                            const isInline = !className || !className.includes('language-');
+                          code: (props) => {
+                            const codeClassName = (props as any).className as string | undefined;
+                            const isInline = !codeClassName || !codeClassName.includes('language-');
                             return isInline ? (
-                              <code className="bg-gray-100 text-red-600 px-1 py-0.5 rounded text-xs font-mono" {...props} />
+                              <code className="bg-gray-100 text-red-600 px-1 py-0.5 rounded text-xs font-mono" {...(props as any)} />
                             ) : (
-                              <code className="block bg-gray-100 p-3 rounded text-xs font-mono overflow-x-auto" {...props} />
+                              <code className="block bg-gray-100 p-3 rounded text-xs font-mono overflow-x-auto" {...(props as any)} />
                             );
                           },
                           pre: ({...props}) => (

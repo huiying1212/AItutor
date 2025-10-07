@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     // 调用本地的多模态搜索API来获取图片
     // http://localhost:8000/search/text
-    const knowledgeResponse = await fetch('https://hoy1212-aitutor.hf.space', {
+    const knowledgeResponse = await fetch('https://hoy1212-aitutor.hf.space/search/text', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

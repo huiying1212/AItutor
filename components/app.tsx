@@ -31,48 +31,6 @@ export default function App() {
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const maxReconnectAttempts = 3;
 
-  // Auto-reconnect function
-  const autoReconnect = useCallback(async () => {
-    if (reconnectAttempts >= maxReconnectAttempts) {
-      console.log("Max reconnection attempts reached");
-      setIsReconnecting(false);
-      return;
-    }
-
-    setIsReconnecting(true);
-    setReconnectAttempts(prev => prev + 1);
-    
-    console.log(`Attempting to reconnect... (${reconnectAttempts + 1}/${maxReconnectAttempts})`);
-    
-    // Wait a bit before reconnecting
-    await new Promise(resolve => setTimeout(resolve, 2000 + reconnectAttempts * 1000));
-    
-    // Clean up current connection
-    if (peerConnection.current) {
-      peerConnection.current.close();
-    }
-    if (dataChannel) {
-      dataChannel.close();
-    }
-    
-    // Reset states
-    setIsSessionStarted(false);
-    setIsSessionActive(false);
-    setDataChannel(null);
-    peerConnection.current = null;
-    
-    // Try to start a new session
-    try {
-      await startSession();
-      setReconnectAttempts(0);
-      setIsReconnecting(false);
-    } catch (error) {
-      console.error("Reconnection failed:", error);
-      // Try again
-      reconnectTimeout.current = setTimeout(autoReconnect, 3000);
-    }
-  }, [reconnectAttempts, dataChannel, startSession]);
-
   // Start a new realtime session
   const startSession = useCallback(async () => {
     try {
@@ -201,6 +159,48 @@ export default function App() {
       throw error;
     }
   }, [isSessionStarted, dataChannel, isReconnecting, reconnectTimeout, tracks, audioTransceiver]);
+
+  // Auto-reconnect function
+  const autoReconnect = useCallback(async () => {
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      console.log("Max reconnection attempts reached");
+      setIsReconnecting(false);
+      return;
+    }
+
+    setIsReconnecting(true);
+    setReconnectAttempts(prev => prev + 1);
+    
+    console.log(`Attempting to reconnect... (${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+    
+    // Wait a bit before reconnecting
+    await new Promise(resolve => setTimeout(resolve, 2000 + reconnectAttempts * 1000));
+    
+    // Clean up current connection
+    if (peerConnection.current) {
+      peerConnection.current.close();
+    }
+    if (dataChannel) {
+      dataChannel.close();
+    }
+    
+    // Reset states
+    setIsSessionStarted(false);
+    setIsSessionActive(false);
+    setDataChannel(null);
+    peerConnection.current = null;
+    
+    // Try to start a new session
+    try {
+      await startSession();
+      setReconnectAttempts(0);
+      setIsReconnecting(false);
+    } catch (error) {
+      console.error("Reconnection failed:", error);
+      // Try again
+      reconnectTimeout.current = setTimeout(autoReconnect, 3000);
+    }
+  }, [reconnectAttempts, dataChannel, startSession]);
 
   // Stop current session, clean up peer connection and data channel
   const stopSession = useCallback(() => {

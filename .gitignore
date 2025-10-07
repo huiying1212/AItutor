@@ -58,9 +58,9 @@ pip-delete-this-directory.txt
 
 # 向量数据库文件（体积大，不应提交）
 # /vector_database/
-*.faiss
-*.pkl
-*.pickle
+# *.faiss
+# *.pkl
+# *.pickle
 
 # CLIP模型文件（体积大，应单独下载）
 /models/

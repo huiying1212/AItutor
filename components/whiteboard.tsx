@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -164,6 +164,14 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
   }, [slides.length]);
 
   // Add keyboard navigation
+  const handlePreviousSlide = useCallback(() => {
+    setCurrentSlideIndex((prev) => (prev > 0 ? prev - 1 : prev));
+  }, []);
+
+  const handleNextSlide = useCallback(() => {
+    setCurrentSlideIndex((prev) => (prev < slides.length - 1 ? prev + 1 : prev));
+  }, [slides.length]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (slides.length <= 1) return;
@@ -184,19 +192,9 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentSlideIndex, slides.length]);
+  }, [handleNextSlide, handlePreviousSlide, slides.length]);
 
-  const handlePreviousSlide = () => {
-    if (currentSlideIndex > 0) {
-      setCurrentSlideIndex(currentSlideIndex - 1);
-    }
-  };
-
-  const handleNextSlide = () => {
-    if (currentSlideIndex < slides.length - 1) {
-      setCurrentSlideIndex(currentSlideIndex + 1);
-    }
-  };
+  
 
   const handleSlideSelect = (index: number) => {
     setCurrentSlideIndex(index);
@@ -348,42 +346,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
     return markdownPatterns.some(pattern => pattern.test(text));
   };
 
-  const renderImages = (images: any[]) => {
-    if (!images || images.length === 0) return null;
-    
-    return (
-      <div className="mt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {images.map((image, index) => (
-            <div key={index} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-              <div className="aspect-video bg-gray-100 rounded mb-2 overflow-hidden">
-                <img 
-                  src={image.url} 
-                  alt={image.description}
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    const parent = (e.target as HTMLElement).parentElement;
-                    if (parent) {
-                      parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl mb-2">🖼️</div><div class="text-sm">图片加载失败</div></div></div>';
-                    }
-                  }}
-                />
-              </div>
-              <div className="text-sm">
-                <div className="font-medium text-gray-800 mb-1 line-clamp-2">
-                  {image.description}
-                </div>
-                <div className="text-gray-500 text-xs">
-                  来源：{image.chapter}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  
 
   const renderContent = () => {
     if (!content) {
@@ -744,11 +707,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
-                              ol: ({node, ...props}) => <div {...props} />,
-                              li: ({node, ...props}) => <div {...props} />,
-                              p: ({node, ...props}) => <div className="inline" {...props} />,
-                              strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
-                              em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
+                              ol: ({...props}) => <div {...props} />,
+                              li: ({...props}) => <div {...props} />,
+                              p: ({...props}) => <div className="inline" {...props} />,
+                              strong: ({...props}) => <strong className="font-bold text-blue-900" {...props} />,
+                              em: ({...props}) => <em className="italic text-blue-700" {...props} />,
                             }}
                           >
                             {item.replace(/^\d+\.\s*/, '')}
@@ -949,17 +912,17 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeHighlight, rehypeRaw]}
                         components={{
-                          h1: ({node, ...props}) => <h1 className="text-lg font-bold text-blue-900 mt-4 mb-3 border-b border-gray-300 pb-1" {...props} />,
-                          h2: ({node, ...props}) => <h2 className="text-base font-semibold text-blue-900 mt-4 mb-2" {...props} />,
-                          h3: ({node, ...props}) => <h3 className="text-sm font-semibold text-blue-900 mt-3 mb-2" {...props} />,
-                          p: ({node, ...props}) => <p className="mb-3 leading-relaxed text-sm" {...props} />,
-                          ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1 ml-3 text-sm" {...props} />,
-                          ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1 ml-3 text-sm" {...props} />,
-                          li: ({node, ...props}) => <li className="leading-relaxed text-sm" {...props} />,
-                          blockquote: ({node, ...props}) => (
+                          h1: ({...props}) => <h1 className="text-lg font-bold text-blue-900 mt-4 mb-3 border-b border-gray-300 pb-1" {...props} />,
+                          h2: ({...props}) => <h2 className="text-base font-semibold text-blue-900 mt-4 mb-2" {...props} />,
+                          h3: ({...props}) => <h3 className="text-sm font-semibold text-blue-900 mt-3 mb-2" {...props} />,
+                          p: ({...props}) => <p className="mb-3 leading-relaxed text-sm" {...props} />,
+                          ul: ({...props}) => <ul className="list-disc list-inside mb-3 space-y-1 ml-3 text-sm" {...props} />,
+                          ol: ({...props}) => <ol className="list-decimal list-inside mb-3 space-y-1 ml-3 text-sm" {...props} />,
+                          li: ({...props}) => <li className="leading-relaxed text-sm" {...props} />,
+                          blockquote: ({...props}) => (
                             <blockquote className="border-l-4 border-blue-500 pl-3 py-2 bg-blue-50 italic text-gray-700 mb-3 text-sm" {...props} />
                           ),
-                          code: ({node, ...props}) => {
+                          code: ({...props}) => {
                             const { children, className } = props;
                             const isInline = !className || !className.includes('language-');
                             return isInline ? (
@@ -968,25 +931,25 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                               <code className="block bg-gray-100 p-3 rounded text-xs font-mono overflow-x-auto" {...props} />
                             );
                           },
-                          pre: ({node, ...props}) => (
+                          pre: ({...props}) => (
                             <pre className="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto mb-3 text-xs" {...props} />
                           ),
-                          table: ({node, ...props}) => (
+                          table: ({...props}) => (
                             <div className="overflow-x-auto mb-3">
                               <table className="min-w-full border-collapse border border-gray-300 text-xs" {...props} />
                             </div>
                           ),
-                          th: ({node, ...props}) => (
+                          th: ({...props}) => (
                             <th className="border border-gray-300 bg-gray-100 px-2 py-1 text-left font-semibold text-xs" {...props} />
                           ),
-                          td: ({node, ...props}) => (
+                          td: ({...props}) => (
                             <td className="border border-gray-300 px-2 py-1 text-xs" {...props} />
                           ),
-                          a: ({node, ...props}) => (
+                          a: ({...props}) => (
                             <a className="text-blue-600 hover:text-blue-800 underline text-sm" target="_blank" rel="noopener noreferrer" {...props} />
                           ),
-                          strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
-                          em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
+                          strong: ({...props}) => <strong className="font-bold text-blue-900" {...props} />,
+                          em: ({...props}) => <em className="italic text-blue-700" {...props} />,
                         }}
                       >
                         {content.content}
@@ -1013,15 +976,15 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                           remarkPlugins={[remarkGfm]}
                           rehypePlugins={[rehypeHighlight, rehypeRaw]}
                           components={{
-                            h1: ({node, ...props}) => <h1 className="text-sm font-bold text-blue-900 mt-3 mb-2 border-b border-gray-300 pb-1" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-xs font-semibold text-blue-900 mt-3 mb-2" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-xs font-semibold text-blue-900 mt-2 mb-1" {...props} />,
-                            p: ({node, ...props}) => <p className="mb-2 leading-relaxed text-xs" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1 ml-2 text-xs" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1 ml-2 text-xs" {...props} />,
-                            li: ({node, ...props}) => <li className="leading-relaxed text-xs" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
-                            em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
+                            h1: ({...props}) => <h1 className="text-sm font-bold text-blue-900 mt-3 mb-2 border-b border-gray-300 pb-1" {...props} />,
+                            h2: ({...props}) => <h2 className="text-xs font-semibold text-blue-900 mt-3 mb-2" {...props} />,
+                            h3: ({...props}) => <h3 className="text-xs font-semibold text-blue-900 mt-2 mb-1" {...props} />,
+                            p: ({...props}) => <p className="mb-2 leading-relaxed text-xs" {...props} />,
+                            ul: ({...props}) => <ul className="list-disc list-inside mb-2 space-y-1 ml-2 text-xs" {...props} />,
+                            ol: ({...props}) => <ol className="list-decimal list-inside mb-2 space-y-1 ml-2 text-xs" {...props} />,
+                            li: ({...props}) => <li className="leading-relaxed text-xs" {...props} />,
+                            strong: ({...props}) => <strong className="font-bold text-blue-900" {...props} />,
+                            em: ({...props}) => <em className="italic text-blue-700" {...props} />,
                           }}
                         >
                           {content.content}

@@ -155,7 +155,7 @@ const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
         nodeSep: 50,
         edgeSep: 20,
         rankSep: 100
-      }
+      } as any
     });
 
     // Add event listeners for node interactions

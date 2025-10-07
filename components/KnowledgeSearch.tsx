@@ -40,7 +40,8 @@ const KnowledgeSearch: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const API_BASE = 'http://localhost:8000';
+  // const API_BASE = 'http://localhost:8000';
+  const API_BASE = 'https://hoy1212-aitutor.hf.space';
 
   const handleTextSearch = useCallback(async () => {
     if (!query.trim()) return;

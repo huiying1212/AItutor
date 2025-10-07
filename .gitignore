@@ -57,7 +57,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # 向量数据库文件（体积大，不应提交）
-/vector_database/
+# /vector_database/
 *.faiss
 *.pkl
 *.pickle

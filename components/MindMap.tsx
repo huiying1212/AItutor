@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
 import { transformDataToElements, showNotification } from "../lib/utils/graphUtils";
@@ -30,7 +30,7 @@ interface MindMapProps {
 const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
-  
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     if (!mindMapData || !containerRef.current) return;
@@ -56,31 +56,31 @@ const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
         {
           selector: 'node',
           style: {
-            'background-color': '#3b82f6',
+            'background-color': '#f8fafc',
             'label': 'data(keyword)',
             'text-valign': 'center',
             'text-halign': 'center',
-            'color': 'white',
-            'font-size': '12px',
+            'color': '#1e293b',
+            'font-size': '14px',
             'font-weight': 'bold',
-            'text-outline-width': 2,
-            'text-outline-color': '#1e40af',
+            'font-family': 'system-ui, -apple-system, sans-serif',
             'border-width': 2,
-            'border-color': '#1e40af',
-            'width': 'data(size)',
-            'height': 'data(size)',
-            'shape': 'round-rectangle'
+            'border-color': '#cbd5e1',
+            'width': 'label',
+            'height': 'label',
+            'padding': '16px',
+            'shape': 'round-rectangle',
+            'text-wrap': 'wrap',
+            'text-max-width': '120px'
           }
         },
         {
           selector: 'node[keyword]',
           style: {
-            'background-color': '#3b82f6',
+            'background-color': '#f8fafc',
             'label': 'data(keyword)',
             'font-size': '14px',
-            'font-weight': 'bold',
-            'width': 30,
-            'height': 30
+            'font-weight': 'bold'
           }
         },
         {
@@ -91,70 +91,74 @@ const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
             'background-clip': 'node',
             'background-width': '100%',
             'background-height': '100%',
-            'border-width': 3,
+            'border-width': 2,
             'border-color': '#3b82f6',
-            'width': 'data(size)',
-            'height': 'data(size)',
+            'width': 80,
+            'height': 80,
             'label': 'data(keyword)',
             'text-valign': 'bottom',
-            'text-margin-y': -5,
-            'font-size': '10px',
+            'text-margin-y': 10,
+            'font-size': '13px',
             'font-weight': 'bold',
-            'color': '#1e40af',
-            'text-outline-width': 1,
-            'text-outline-color': 'white'
+            'color': '#1e293b',
+            'background-color': '#ffffff'
           }
         },
         {
           selector: 'node.text-only-node',
           style: {
-            'background-color': '#6b7280',
-            'width': 20,
-            'height': 20,
-            'font-size': '10px'
+            'background-color': '#f1f5f9',
+            'border-color': '#cbd5e1'
           }
         },
         {
           selector: 'node.text-only-extended-node',
           style: {
-            'background-color': '#f59e0b',
-            'width': 25,
-            'height': 25,
-            'font-size': '11px'
+            'background-color': '#fef3c7',
+            'border-color': '#fbbf24'
           }
         },
         {
           selector: 'node.extended-node',
           style: {
-            'border-color': '#f59e0b',
-            'border-width': 4
+            'background-color': '#fef3c7',
+            'border-color': '#fbbf24',
+            'border-width': 2
           }
         },
         {
           selector: 'edge',
           style: {
-            'width': 2,
-            'line-color': '#6b7280',
-            'target-arrow-color': '#6b7280',
+            'width': 1.5,
+            'line-color': '#cbd5e1',
+            'target-arrow-color': '#cbd5e1',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'label': 'data(label)',
-            'font-size': '10px',
-            'text-rotation': 'autorotate',
-            'text-margin-y': -10,
-            'color': '#374151',
-            'text-outline-width': 1,
-            'text-outline-color': 'white'
+            'font-size': '11px',
+            'color': '#64748b',
+            'font-family': 'system-ui, -apple-system, sans-serif',
+            'text-background-color': '#ffffff',
+            'text-background-opacity': 0.8,
+            'text-background-padding': '3px'
+          }
+        },
+        {
+          selector: 'node:selected',
+          style: {
+            'background-color': '#dbeafe',
+            'border-color': '#3b82f6',
+            'border-width': 3
           }
         }
       ],
       layout: {
         name: 'dagre',
         rankDir: 'TB',
-        spacingFactor: 1.5,
-        nodeSep: 50,
-        edgeSep: 20,
-        rankSep: 100
+        spacingFactor: 2,
+        nodeSep: 80,
+        edgeSep: 30,
+        rankSep: 120
       } as any
     });
 
@@ -175,26 +179,38 @@ const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
 
     // Add hover effects
     cyRef.current.on('mouseover', 'node', (evt) => {
-      evt.target.style('background-color', '#ef4444');
+      evt.target.style({
+        'border-color': '#3b82f6',
+        'border-width': 3
+      });
     });
 
     cyRef.current.on('mouseout', 'node', (evt) => {
       const node = evt.target;
       const data = node.data();
       
-      if (data.image) {
-        node.style('background-color', '#3b82f6');
-      } else if (data.isExtendedInfo === 1) {
-        node.style('background-color', '#f59e0b');
+      if (data.isExtendedInfo === 1) {
+        node.style({
+          'border-color': '#fbbf24',
+          'border-width': 2
+        });
+      } else if (data.image) {
+        node.style({
+          'border-color': '#3b82f6',
+          'border-width': 2
+        });
       } else {
-        node.style('background-color', '#6b7280');
+        node.style({
+          'border-color': '#cbd5e1',
+          'border-width': 2
+        });
       }
     });
 
     // Fit the graph to the container
     cyRef.current.fit();
 
-    
+    setIsVisible(true);
 
     return () => {
       if (cyRef.current) {
@@ -217,42 +233,22 @@ const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
   }
 
   return (
-    <div className="h-full w-full bg-gradient-to-br from-purple-50 to-white p-4">
+    <div className="h-full w-full bg-white flex flex-col">
       {/* Header */}
-      <div className="text-center mb-4">
-        <h2 className="text-xl font-bold text-purple-900">{mindMapData.title}</h2>
-        <div className="text-gray-600 text-sm mt-2">
-          点击节点查看详细信息 • 拖拽节点调整布局
-        </div>
+      <div className="px-6 py-4 border-b border-gray-200">
+        <h2 className="text-lg font-semibold text-gray-900">{mindMapData.title}</h2>
+        <p className="text-xs text-gray-500 mt-1">
+          点击节点查看详细信息
+        </p>
       </div>
       
       {/* Mind Map Container */}
-      <div className="h-[calc(100%-80px)] bg-white rounded-lg shadow-lg border overflow-hidden">
+      <div className="flex-1 p-6">
         <div 
           ref={containerRef} 
           className="w-full h-full"
           style={{ minHeight: '400px' }}
         />
-      </div>
-      
-      {/* Legend */}
-      <div className="mt-4 flex justify-center space-x-6 text-xs">
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-blue-500 rounded"></div>
-          <span>主要概念</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-gray-500 rounded"></div>
-          <span>基础信息</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-          <span>扩展信息</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-blue-500 rounded border-2 border-blue-300"></div>
-          <span>带图片节点</span>
-        </div>
       </div>
     </div>
   );

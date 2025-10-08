@@ -31,8 +31,50 @@ export default function App() {
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const maxReconnectAttempts = 3;
 
+  // Auto-reconnect function
+  const autoReconnect = useCallback(async () => {
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      console.log("Max reconnection attempts reached");
+      setIsReconnecting(false);
+      return;
+    }
+
+    setIsReconnecting(true);
+    setReconnectAttempts(prev => prev + 1);
+    
+    console.log(`Attempting to reconnect... (${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+    
+    // Wait a bit before reconnecting
+    await new Promise(resolve => setTimeout(resolve, 2000 + reconnectAttempts * 1000));
+    
+    // Clean up current connection
+    if (peerConnection.current) {
+      peerConnection.current.close();
+    }
+    if (dataChannel) {
+      dataChannel.close();
+    }
+    
+    // Reset states
+    setIsSessionStarted(false);
+    setIsSessionActive(false);
+    setDataChannel(null);
+    peerConnection.current = null;
+    
+    // Try to start a new session
+    try {
+      await startSession();
+      setReconnectAttempts(0);
+      setIsReconnecting(false);
+    } catch (error) {
+      console.error("Reconnection failed:", error);
+      // Try again
+      reconnectTimeout.current = setTimeout(autoReconnect, 3000);
+    }
+  }, [reconnectAttempts, dataChannel]);
+
   // Start a new realtime session
-  const startSession = useCallback(async () => {
+  async function startSession() {
     try {
       if (!isSessionStarted) {
         setIsSessionStarted(true);
@@ -158,52 +200,10 @@ export default function App() {
       setConnectionState('failed');
       throw error;
     }
-  }, [isSessionStarted, dataChannel, isReconnecting, reconnectTimeout, tracks, audioTransceiver]);
-
-  // Auto-reconnect function
-  const autoReconnect = useCallback(async () => {
-    if (reconnectAttempts >= maxReconnectAttempts) {
-      console.log("Max reconnection attempts reached");
-      setIsReconnecting(false);
-      return;
-    }
-
-    setIsReconnecting(true);
-    setReconnectAttempts(prev => prev + 1);
-    
-    console.log(`Attempting to reconnect... (${reconnectAttempts + 1}/${maxReconnectAttempts})`);
-    
-    // Wait a bit before reconnecting
-    await new Promise(resolve => setTimeout(resolve, 2000 + reconnectAttempts * 1000));
-    
-    // Clean up current connection
-    if (peerConnection.current) {
-      peerConnection.current.close();
-    }
-    if (dataChannel) {
-      dataChannel.close();
-    }
-    
-    // Reset states
-    setIsSessionStarted(false);
-    setIsSessionActive(false);
-    setDataChannel(null);
-    peerConnection.current = null;
-    
-    // Try to start a new session
-    try {
-      await startSession();
-      setReconnectAttempts(0);
-      setIsReconnecting(false);
-    } catch (error) {
-      console.error("Reconnection failed:", error);
-      // Try again
-      reconnectTimeout.current = setTimeout(autoReconnect, 3000);
-    }
-  }, [reconnectAttempts, dataChannel, startSession]);
+  }
 
   // Stop current session, clean up peer connection and data channel
-  const stopSession = useCallback(() => {
+  function stopSession() {
     // Clear any pending reconnection attempts
     if (reconnectTimeout.current) {
       clearTimeout(reconnectTimeout.current);
@@ -230,7 +230,7 @@ export default function App() {
     setConnectionState('closed');
     setReconnectAttempts(0);
     setIsReconnecting(false);
-  }, [audioStream]);
+  }
 
   // Grabs a new mic track and replaces the placeholder track in the transceiver
   async function startRecording() {
@@ -493,7 +493,7 @@ export default function App() {
       }
       stopSession();
     };
-  }, [stopSession]);
+  }, []);
 
   const handleConnectClick = async () => {
     if (isSessionActive) {
@@ -521,6 +521,11 @@ export default function App() {
       console.error("Cannot send text: session not active or no data channel");
       return;
     }
+
+    // Cancel any ongoing response to interrupt the AI
+    sendClientEvent({
+      type: "response.cancel"
+    });
 
     // Send text message as conversation item
     sendClientEvent({

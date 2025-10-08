@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
+import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -97,7 +96,12 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
     let args: any = {};
     
     try {
-      args = JSON.parse(toolArgs);
+      // Check if toolArgs is already an object or needs parsing
+      if (typeof toolArgs === 'string') {
+        args = JSON.parse(toolArgs);
+      } else {
+        args = toolArgs;
+      }
       console.log("Parsed arguments:", args);
     } catch (error) {
       console.error("Failed to parse toolCall arguments:", error);
@@ -165,14 +169,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
   }, [slides.length]);
 
   // Add keyboard navigation
-  const handlePreviousSlide = useCallback(() => {
-    setCurrentSlideIndex((prev) => (prev > 0 ? prev - 1 : prev));
-  }, []);
-
-  const handleNextSlide = useCallback(() => {
-    setCurrentSlideIndex((prev) => (prev < slides.length - 1 ? prev + 1 : prev));
-  }, [slides.length]);
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (slides.length <= 1) return;
@@ -193,9 +189,19 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleNextSlide, handlePreviousSlide, slides.length]);
+  }, [currentSlideIndex, slides.length]);
 
-  
+  const handlePreviousSlide = () => {
+    if (currentSlideIndex > 0) {
+      setCurrentSlideIndex(currentSlideIndex - 1);
+    }
+  };
+
+  const handleNextSlide = () => {
+    if (currentSlideIndex < slides.length - 1) {
+      setCurrentSlideIndex(currentSlideIndex + 1);
+    }
+  };
 
   const handleSlideSelect = (index: number) => {
     setCurrentSlideIndex(index);
@@ -347,7 +353,42 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
     return markdownPatterns.some(pattern => pattern.test(text));
   };
 
-  
+  const renderImages = (images: any[]) => {
+    if (!images || images.length === 0) return null;
+    
+    return (
+      <div className="mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {images.map((image, index) => (
+            <div key={index} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+              <div className="aspect-video bg-gray-100 rounded mb-2 overflow-hidden">
+                <img 
+                  src={image.url} 
+                  alt={image.description}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    const parent = (e.target as HTMLElement).parentElement;
+                    if (parent) {
+                      parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl mb-2">🖼️</div><div class="text-sm">图片加载失败</div></div></div>';
+                    }
+                  }}
+                />
+              </div>
+              <div className="text-sm">
+                <div className="font-medium text-gray-800 mb-1 line-clamp-2">
+                  {image.description}
+                </div>
+                <div className="text-gray-500 text-xs">
+                  来源：{image.chapter}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const renderContent = () => {
     if (!content) {
@@ -387,21 +428,26 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               // Single image - centered
               <div className="h-full flex items-center justify-center">
                 <div className="bg-white rounded-lg shadow-md overflow-hidden border max-w-2xl max-h-full">
-                  <div className="h-[85%] bg-gray-100 relative">
-                    <Image 
-                      src={content.images?.[0]?.url || ""} 
-                      alt={content.images?.[0]?.description || ""}
-                      fill
-                      unoptimized
-                      className="object-contain"
+                  <div className="h-[85%] bg-gray-100">
+                    <img 
+                      src={content.images[0].url} 
+                      alt={content.images[0].description}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        const parent = (e.target as HTMLElement).parentElement;
+                        if (parent) {
+                          parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-4xl mb-2">🖼️</div><div class="text-sm">Image unavailable</div></div></div>';
+                        }
+                      }}
                     />
                   </div>
                   <div className="p-3">
                     <div className="font-medium text-gray-800 text-sm">
-                      {content.images?.[0]?.description || ""}
+                      {content.images[0].description}
                     </div>
                     <div className="text-gray-500 text-xs mt-1">
-                      Source: {content.images?.[0]?.chapter || ""}
+                      Source: {content.images[0].chapter}
                     </div>
                   </div>
                 </div>
@@ -411,15 +457,20 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
             {imageCount === 2 && (
               // Two images - side by side
               <div className="h-full flex gap-4">
-                {(content.images ?? []).slice(0, 2).map((image, index) => (
+                {content.images.slice(0, 2).map((image, index) => (
                   <div key={index} className="flex-1 bg-white rounded-lg shadow-md overflow-hidden border">
-                    <div className="h-[85%] bg-gray-100 relative">
-                      <Image 
+                    <div className="h-[85%] bg-gray-100">
+                      <img 
                         src={image.url} 
                         alt={image.description}
-                        fill
-                        unoptimized
-                        className="object-contain"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const parent = (e.target as HTMLElement).parentElement;
+                          if (parent) {
+                            parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-3xl mb-2">🖼️</div><div class="text-sm">Image unavailable</div></div></div>';
+                          }
+                        }}
                       />
                     </div>
                     <div className="h-[15%] p-2 flex flex-col justify-center">
@@ -441,15 +492,20 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                 {imageCount === 3 && (
                   <div className="h-full flex flex-col gap-2">
                     <div className="flex-1 flex gap-2">
-                      {(content.images ?? []).slice(0, 2).map((image, index) => (
+                      {content.images.slice(0, 2).map((image, index) => (
                         <div key={index} className="flex-1 bg-white rounded-lg shadow-md overflow-hidden border">
-                          <div className="h-[80%] bg-gray-100 relative">
-                            <Image 
+                          <div className="h-[80%] bg-gray-100">
+                            <img 
                               src={image.url} 
                               alt={image.description}
-                              fill
-                              unoptimized
-                              className="object-contain"
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                const parent = (e.target as HTMLElement).parentElement;
+                                if (parent) {
+                                  parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl">🖼️</div></div></div>';
+                                }
+                              }}
                             />
                           </div>
                           <div className="h-[20%] p-1 flex items-center">
@@ -461,19 +517,24 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                       ))}
                     </div>
                     <div className="flex-1">
-                        <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
-                          <div className="h-[80%] bg-gray-100 relative">
-                            <Image 
-                            src={content.images?.[2]?.url || ""} 
-                            alt={content.images?.[2]?.description || ""}
-                            fill
-                            unoptimized
-                            className="object-contain"
+                      <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
+                        <div className="h-[80%] bg-gray-100">
+                          <img 
+                            src={content.images[2].url} 
+                            alt={content.images[2].description}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const parent = (e.target as HTMLElement).parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl">🖼️</div></div></div>';
+                              }
+                            }}
                           />
                         </div>
-                            <div className="h-[20%] p-1 flex items-center">
+                        <div className="h-[20%] p-1 flex items-center">
                           <div className="font-medium text-gray-800 text-xs line-clamp-1">
-                            {content.images?.[2]?.description || ""}
+                            {content.images[2].description}
                           </div>
                         </div>
                       </div>
@@ -483,15 +544,20 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                 
                 {imageCount >= 4 && (
                   <div className="h-full grid grid-cols-2 gap-2">
-                    {(content.images ?? []).slice(0, 4).map((image, index) => (
+                    {content.images.slice(0, 4).map((image, index) => (
                       <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100 relative">
-                          <Image 
+                        <div className="h-[80%] bg-gray-100">
+                          <img 
                             src={image.url} 
                             alt={image.description}
-                            fill
-                            unoptimized
-                            className="object-contain"
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const parent = (e.target as HTMLElement).parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-xl">🖼️</div></div></div>';
+                              }
+                            }}
                           />
                         </div>
                         <div className="h-[20%] p-1 flex items-center">
@@ -683,11 +749,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
-                              ol: ({...props}) => <div {...props} />,
-                              li: ({...props}) => <div {...props} />,
-                              p: ({...props}) => <div className="inline" {...props} />,
-                              strong: ({...props}) => <strong className="font-bold text-blue-900" {...props} />,
-                              em: ({...props}) => <em className="italic text-blue-700" {...props} />,
+                              ol: ({node, ...props}) => <div {...props} />,
+                              li: ({node, ...props}) => <div {...props} />,
+                              p: ({node, ...props}) => <div className="inline" {...props} />,
+                              strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
+                              em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
                             }}
                           >
                             {item.replace(/^\d+\.\s*/, '')}
@@ -736,13 +802,18 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   <div className="h-full space-y-2">
                     {content.images.slice(0, 2).map((image, index) => (
                       <div key={index} className="h-[48%] bg-white rounded-lg shadow-md overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100 relative">
-                          <Image 
+                        <div className="h-[80%] bg-gray-100">
+                          <img 
                             src={image.url} 
                             alt={image.description}
-                            fill
-                            unoptimized
-                            className="object-contain"
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const parent = (e.target as HTMLElement).parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl mb-1">🖼️</div><div class="text-xs">Unavailable</div></div></div>';
+                              }
+                            }}
                           />
                         </div>
                         <div className="h-[20%] p-1 flex flex-col justify-center">
@@ -760,13 +831,18 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   <div className="h-full grid grid-cols-2 gap-2">
                     {content.images.slice(0, 4).map((image, index) => (
                       <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100 relative">
-                          <Image 
+                        <div className="h-[80%] bg-gray-100">
+                          <img 
                             src={image.url} 
                             alt={image.description}
-                            fill
-                            unoptimized
-                            className="object-contain"
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const parent = (e.target as HTMLElement).parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-xl">🖼️</div></div></div>';
+                              }
+                            }}
                           />
                         </div>
                         <div className="h-[20%] p-1 flex items-center">
@@ -810,11 +886,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                              ol: ({...props}) => <div {...props} />,
-                              li: ({...props}) => <div {...props} />,
-                              p: ({...props}) => <div className="inline" {...props} />,
-                              strong: ({...props}) => <strong className="font-bold text-blue-900" {...props} />,
-                              em: ({...props}) => <em className="italic text-blue-700" {...props} />,
+                            ol: ({node, ...props}) => <div {...props} />,
+                            li: ({node, ...props}) => <div {...props} />,
+                            p: ({node, ...props}) => <div className="inline" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
+                            em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
                           }}
                         >
                           {item.replace(/^\d+\.\s*/, '')}
@@ -833,13 +909,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               <div className="grid grid-cols-3 gap-2">
                 {content.images.slice(0, 3).map((image, index) => (
                   <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">
-                    <div className="aspect-video bg-gray-100 relative">
-                      <Image 
+                    <div className="aspect-video bg-gray-100">
+                      <img 
                         src={image.url} 
                         alt={image.description}
-                        fill
-                        unoptimized
-                        className="object-contain"
+                        className="w-full h-full object-contain"
                       />
                     </div>
                     <div className="p-1">
@@ -880,44 +954,44 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeHighlight, rehypeRaw]}
                         components={{
-                          h1: ({...props}) => <h1 className="text-lg font-bold text-blue-900 mt-4 mb-3 border-b border-gray-300 pb-1" {...props} />,
-                          h2: ({...props}) => <h2 className="text-base font-semibold text-blue-900 mt-4 mb-2" {...props} />,
-                          h3: ({...props}) => <h3 className="text-sm font-semibold text-blue-900 mt-3 mb-2" {...props} />,
-                          p: ({...props}) => <p className="mb-3 leading-relaxed text-sm" {...props} />,
-                          ul: ({...props}) => <ul className="list-disc list-inside mb-3 space-y-1 ml-3 text-sm" {...props} />,
-                          ol: ({...props}) => <ol className="list-decimal list-inside mb-3 space-y-1 ml-3 text-sm" {...props} />,
-                          li: ({...props}) => <li className="leading-relaxed text-sm" {...props} />,
-                          blockquote: ({...props}) => (
+                          h1: ({node, ...props}) => <h1 className="text-lg font-bold text-blue-900 mt-4 mb-3 border-b border-gray-300 pb-1" {...props} />,
+                          h2: ({node, ...props}) => <h2 className="text-base font-semibold text-blue-900 mt-4 mb-2" {...props} />,
+                          h3: ({node, ...props}) => <h3 className="text-sm font-semibold text-blue-900 mt-3 mb-2" {...props} />,
+                          p: ({node, ...props}) => <p className="mb-3 leading-relaxed text-sm" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1 ml-3 text-sm" {...props} />,
+                          ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1 ml-3 text-sm" {...props} />,
+                          li: ({node, ...props}) => <li className="leading-relaxed text-sm" {...props} />,
+                          blockquote: ({node, ...props}) => (
                             <blockquote className="border-l-4 border-blue-500 pl-3 py-2 bg-blue-50 italic text-gray-700 mb-3 text-sm" {...props} />
                           ),
-                          code: (props) => {
-                            const codeClassName = (props as any).className as string | undefined;
-                            const isInline = !codeClassName || !codeClassName.includes('language-');
+                          code: ({node, ...props}) => {
+                            const { children, className } = props;
+                            const isInline = !className || !className.includes('language-');
                             return isInline ? (
-                              <code className="bg-gray-100 text-red-600 px-1 py-0.5 rounded text-xs font-mono" {...(props as any)} />
+                              <code className="bg-gray-100 text-red-600 px-1 py-0.5 rounded text-xs font-mono" {...props} />
                             ) : (
-                              <code className="block bg-gray-100 p-3 rounded text-xs font-mono overflow-x-auto" {...(props as any)} />
+                              <code className="block bg-gray-100 p-3 rounded text-xs font-mono overflow-x-auto" {...props} />
                             );
                           },
-                          pre: ({...props}) => (
+                          pre: ({node, ...props}) => (
                             <pre className="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto mb-3 text-xs" {...props} />
                           ),
-                          table: ({...props}) => (
+                          table: ({node, ...props}) => (
                             <div className="overflow-x-auto mb-3">
                               <table className="min-w-full border-collapse border border-gray-300 text-xs" {...props} />
                             </div>
                           ),
-                          th: ({...props}) => (
+                          th: ({node, ...props}) => (
                             <th className="border border-gray-300 bg-gray-100 px-2 py-1 text-left font-semibold text-xs" {...props} />
                           ),
-                          td: ({...props}) => (
+                          td: ({node, ...props}) => (
                             <td className="border border-gray-300 px-2 py-1 text-xs" {...props} />
                           ),
-                          a: ({...props}) => (
+                          a: ({node, ...props}) => (
                             <a className="text-blue-600 hover:text-blue-800 underline text-sm" target="_blank" rel="noopener noreferrer" {...props} />
                           ),
-                          strong: ({...props}) => <strong className="font-bold text-blue-900" {...props} />,
-                          em: ({...props}) => <em className="italic text-blue-700" {...props} />,
+                          strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
+                          em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
                         }}
                       >
                         {content.content}
@@ -944,15 +1018,15 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                           remarkPlugins={[remarkGfm]}
                           rehypePlugins={[rehypeHighlight, rehypeRaw]}
                           components={{
-                            h1: ({...props}) => <h1 className="text-sm font-bold text-blue-900 mt-3 mb-2 border-b border-gray-300 pb-1" {...props} />,
-                            h2: ({...props}) => <h2 className="text-xs font-semibold text-blue-900 mt-3 mb-2" {...props} />,
-                            h3: ({...props}) => <h3 className="text-xs font-semibold text-blue-900 mt-2 mb-1" {...props} />,
-                            p: ({...props}) => <p className="mb-2 leading-relaxed text-xs" {...props} />,
-                            ul: ({...props}) => <ul className="list-disc list-inside mb-2 space-y-1 ml-2 text-xs" {...props} />,
-                            ol: ({...props}) => <ol className="list-decimal list-inside mb-2 space-y-1 ml-2 text-xs" {...props} />,
-                            li: ({...props}) => <li className="leading-relaxed text-xs" {...props} />,
-                            strong: ({...props}) => <strong className="font-bold text-blue-900" {...props} />,
-                            em: ({...props}) => <em className="italic text-blue-700" {...props} />,
+                            h1: ({node, ...props}) => <h1 className="text-sm font-bold text-blue-900 mt-3 mb-2 border-b border-gray-300 pb-1" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-xs font-semibold text-blue-900 mt-3 mb-2" {...props} />,
+                            h3: ({node, ...props}) => <h3 className="text-xs font-semibold text-blue-900 mt-2 mb-1" {...props} />,
+                            p: ({node, ...props}) => <p className="mb-2 leading-relaxed text-xs" {...props} />,
+                            ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1 ml-2 text-xs" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1 ml-2 text-xs" {...props} />,
+                            li: ({node, ...props}) => <li className="leading-relaxed text-xs" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
+                            em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
                           }}
                         >
                           {content.content}
@@ -971,13 +1045,18 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               <div className="flex-[2] overflow-hidden">
                 {imageCount === 1 && (
                   <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
-                    <div className="h-[85%] bg-gray-100 relative">
-                      <Image 
+                    <div className="h-[85%] bg-gray-100">
+                      <img 
                         src={content.images[0].url} 
                         alt={content.images[0].description}
-                        fill
-                        unoptimized
-                        className="object-contain"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const parent = (e.target as HTMLElement).parentElement;
+                          if (parent) {
+                            parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-3xl mb-2">🖼️</div><div class="text-sm">Image unavailable</div></div></div>';
+                          }
+                        }}
                       />
                     </div>
                     <div className="h-[15%] p-2 flex flex-col justify-center">
@@ -995,13 +1074,18 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   <div className="h-full space-y-2">
                     {content.images.slice(0, 2).map((image, index) => (
                       <div key={index} className="h-[48%] bg-white rounded-lg shadow-md overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100 relative">
-                          <Image 
+                        <div className="h-[80%] bg-gray-100">
+                          <img 
                             src={image.url} 
                             alt={image.description}
-                            fill
-                            unoptimized
-                            className="object-contain"
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const parent = (e.target as HTMLElement).parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl mb-1">🖼️</div><div class="text-xs">Unavailable</div></div></div>';
+                              }
+                            }}
                           />
                         </div>
                         <div className="h-[20%] p-1 flex flex-col justify-center">
@@ -1018,13 +1102,18 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   <div className="h-full grid grid-cols-2 gap-2">
                     {content.images.slice(0, 4).map((image, index) => (
                       <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100 relative">
-                          <Image 
+                        <div className="h-[80%] bg-gray-100">
+                          <img 
                             src={image.url} 
                             alt={image.description}
-                            fill
-                            unoptimized
-                            className="object-contain"
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const parent = (e.target as HTMLElement).parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-xl">🖼️</div></div></div>';
+                              }
+                            }}
                           />
                         </div>
                         <div className="h-[20%] p-1 flex items-center">

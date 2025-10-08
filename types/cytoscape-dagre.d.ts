@@ -1,6 +1,6 @@
 declare module 'cytoscape-dagre' {
-  const dagre: any;
-  export default dagre;
+  import { Ext } from 'cytoscape';
+  const cytoscapeDagre: Ext;
+  export default cytoscapeDagre;
 }
-
 

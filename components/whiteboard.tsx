@@ -98,13 +98,21 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
     try {
       // Check if toolArgs is already an object or needs parsing
       if (typeof toolArgs === 'string') {
+        // Ensure the string is not empty and is valid JSON
+        if (toolArgs.trim() === '') {
+          console.error("Empty toolArgs string");
+          return;
+        }
         args = JSON.parse(toolArgs);
-      } else {
+      } else if (typeof toolArgs === 'object' && toolArgs !== null) {
         args = toolArgs;
+      } else {
+        console.error("Invalid toolArgs type:", typeof toolArgs);
+        return;
       }
       console.log("Parsed arguments:", args);
     } catch (error) {
-      console.error("Failed to parse toolCall arguments:", error);
+      console.error("Failed to parse toolCall arguments:", error, "Raw toolArgs:", toolArgs);
       return;
     }
 
@@ -353,43 +361,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
     return markdownPatterns.some(pattern => pattern.test(text));
   };
 
-  const renderImages = (images: any[]) => {
-    if (!images || images.length === 0) return null;
-    
-    return (
-      <div className="mt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {images.map((image, index) => (
-            <div key={index} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-              <div className="aspect-video bg-gray-100 rounded mb-2 overflow-hidden">
-                <img 
-                  src={image.url} 
-                  alt={image.description}
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    const parent = (e.target as HTMLElement).parentElement;
-                    if (parent) {
-                      parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><div class="text-center"><div class="text-2xl mb-2">🖼️</div><div class="text-sm">图片加载失败</div></div></div>';
-                    }
-                  }}
-                />
-              </div>
-              <div className="text-sm">
-                <div className="font-medium text-gray-800 mb-1 line-clamp-2">
-                  {image.description}
-                </div>
-                <div className="text-gray-500 text-xs">
-                  来源：{image.chapter}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   const renderContent = () => {
     if (!content) {
       return (
@@ -424,7 +395,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
           
           {/* Images Layout */}
           <div className="h-[calc(100%-80px)] overflow-hidden">
-            {imageCount === 1 && (
+            {imageCount === 1 && content.images && (
               // Single image - centered
               <div className="h-full flex items-center justify-center">
                 <div className="bg-white rounded-lg shadow-md overflow-hidden border max-w-2xl max-h-full">
@@ -454,7 +425,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               </div>
             )}
             
-            {imageCount === 2 && (
+            {imageCount === 2 && content.images && (
               // Two images - side by side
               <div className="h-full flex gap-4">
                 {content.images.slice(0, 2).map((image, index) => (
@@ -486,7 +457,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               </div>
             )}
             
-            {imageCount >= 3 && (
+            {imageCount >= 3 && content.images && (
               // Multiple images - grid layout
               <div className="h-full">
                 {imageCount === 3 && (
@@ -542,7 +513,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   </div>
                 )}
                 
-                {imageCount >= 4 && (
+                {imageCount >= 4 && content.images && (
                   <div className="h-full grid grid-cols-2 gap-2">
                     {content.images.slice(0, 4).map((image, index) => (
                       <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden border">
@@ -613,7 +584,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                 
                 {/* Right: Images (40%) */}
                 <div className="flex-[2] overflow-hidden">
-                  {imageCount === 1 && (
+                  {imageCount === 1 && content.images && (
                     <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
                       <div className="h-[85%] bg-gray-100">
                         <img 
@@ -640,7 +611,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                     </div>
                   )}
                   
-                  {imageCount === 2 && (
+                  {imageCount === 2 && content.images && (
                     <div className="h-full space-y-2">
                       {content.images.slice(0, 2).map((image, index) => (
                         <div key={index} className="h-[48%] bg-white rounded-lg shadow-md overflow-hidden border">
@@ -668,7 +639,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                     </div>
                   )}
                   
-                  {imageCount >= 3 && (
+                  {imageCount >= 3 && content.images && (
                     <div className="h-full grid grid-cols-2 gap-2">
                       {content.images.slice(0, 4).map((image, index) => (
                         <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">
@@ -748,10 +719,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                         {isMarkdownContent(item) ? (
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
+                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
                             components={{
-                              ol: ({node, ...props}) => <div {...props} />,
-                              li: ({node, ...props}) => <div {...props} />,
-                              p: ({node, ...props}) => <div className="inline" {...props} />,
+                              ol: ({node, ...props}) => <span {...props as any} />,
+                              li: ({node, ...props}) => <span {...props as any} />,
+                              p: ({node, ...props}) => <span className="inline" {...props as any} />,
                               strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
                               em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
                             }}
@@ -771,6 +743,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               <div className="flex-[2] overflow-hidden">
                 {imageCount === 1 && (
                   // Single image - full height
+                  content.images && (
                   <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
                     <div className="h-[85%] bg-gray-100">
                       <img 
@@ -795,9 +768,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                       </div>
                     </div>
                   </div>
+                  )
                 )}
                 
-                {imageCount === 2 && (
+                {imageCount === 2 && content.images && (
                   // Two images - stacked vertically
                   <div className="h-full space-y-2">
                     {content.images.slice(0, 2).map((image, index) => (
@@ -826,7 +800,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   </div>
                 )}
                 
-                {imageCount >= 3 && (
+                {imageCount >= 3 && content.images && (
                   // Multiple images - 2x2 grid
                   <div className="h-full grid grid-cols-2 gap-2">
                     {content.images.slice(0, 4).map((image, index) => (
@@ -885,10 +859,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                       {isMarkdownContent(item) ? (
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
+                          // eslint-disable-next-line @typescript-eslint/no-unused-vars
                           components={{
-                            ol: ({node, ...props}) => <div {...props} />,
-                            li: ({node, ...props}) => <div {...props} />,
-                            p: ({node, ...props}) => <div className="inline" {...props} />,
+                            ol: ({node, ...props}) => <span {...props as any} />,
+                            li: ({node, ...props}) => <span {...props as any} />,
+                            p: ({node, ...props}) => <span className="inline" {...props as any} />,
                             strong: ({node, ...props}) => <strong className="font-bold text-blue-900" {...props} />,
                             em: ({node, ...props}) => <em className="italic text-blue-700" {...props} />,
                           }}
@@ -905,7 +880,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
             </div>
             
             {/* Images at bottom for single column */}
-            {hasImages && (
+            {hasImages && content.images && (
               <div className="grid grid-cols-3 gap-2">
                 {content.images.slice(0, 3).map((image, index) => (
                   <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">
@@ -953,6 +928,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeHighlight, rehypeRaw]}
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
                         components={{
                           h1: ({node, ...props}) => <h1 className="text-lg font-bold text-blue-900 mt-4 mb-3 border-b border-gray-300 pb-1" {...props} />,
                           h2: ({node, ...props}) => <h2 className="text-base font-semibold text-blue-900 mt-4 mb-2" {...props} />,
@@ -964,8 +940,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                           blockquote: ({node, ...props}) => (
                             <blockquote className="border-l-4 border-blue-500 pl-3 py-2 bg-blue-50 italic text-gray-700 mb-3 text-sm" {...props} />
                           ),
-                          code: ({node, ...props}) => {
-                            const { children, className } = props;
+                          code: ({node, children, className, ...props}) => {
                             const isInline = !className || !className.includes('language-');
                             return isInline ? (
                               <code className="bg-gray-100 text-red-600 px-1 py-0.5 rounded text-xs font-mono" {...props} />
@@ -1017,6 +992,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           rehypePlugins={[rehypeHighlight, rehypeRaw]}
+                          // eslint-disable-next-line @typescript-eslint/no-unused-vars
                           components={{
                             h1: ({node, ...props}) => <h1 className="text-sm font-bold text-blue-900 mt-3 mb-2 border-b border-gray-300 pb-1" {...props} />,
                             h2: ({node, ...props}) => <h2 className="text-xs font-semibold text-blue-900 mt-3 mb-2" {...props} />,
@@ -1043,7 +1019,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               
               {/* Right: Images (40%) */}
               <div className="flex-[2] overflow-hidden">
-                {imageCount === 1 && (
+                {imageCount === 1 && content.images && (
                   <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
                     <div className="h-[85%] bg-gray-100">
                       <img 
@@ -1070,7 +1046,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   </div>
                 )}
                 
-                {imageCount === 2 && (
+                {imageCount === 2 && content.images && (
                   <div className="h-full space-y-2">
                     {content.images.slice(0, 2).map((image, index) => (
                       <div key={index} className="h-[48%] bg-white rounded-lg shadow-md overflow-hidden border">
@@ -1098,7 +1074,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   </div>
                 )}
                 
-                {imageCount >= 3 && (
+                {imageCount >= 3 && content.images && (
                   <div className="h-full grid grid-cols-2 gap-2">
                     {content.images.slice(0, 4).map((image, index) => (
                       <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">

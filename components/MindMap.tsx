@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
 import { transformDataToElements, showNotification } from "../lib/utils/graphUtils";
@@ -30,7 +30,6 @@ interface MindMapProps {
 const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     if (!mindMapData || !containerRef.current) return;
@@ -209,8 +208,6 @@ const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
 
     // Fit the graph to the container
     cyRef.current.fit();
-
-    setIsVisible(true);
 
     return () => {
       if (cyRef.current) {

@@ -318,7 +318,18 @@ export default function App() {
       // Handle different tool types
       if (toolCall.name === "search_knowledge") {
         try {
-          const args = JSON.parse(toolCall.arguments);
+          // Parse arguments - handle both string and object cases
+          let args: any = {};
+          if (typeof toolCall.arguments === 'string') {
+            if (toolCall.arguments.trim() === '') {
+              throw new Error("Empty arguments string");
+            }
+            args = JSON.parse(toolCall.arguments);
+          } else if (typeof toolCall.arguments === 'object' && toolCall.arguments !== null) {
+            args = toolCall.arguments;
+          } else {
+            throw new Error(`Invalid arguments type: ${typeof toolCall.arguments}`);
+          }
           const response = await fetch('/api/knowledge/search', {
             method: 'POST',
             headers: {
@@ -362,6 +373,7 @@ export default function App() {
           }
         } catch (error) {
           console.error("Error in knowledge search:", error);
+          console.error("Tool call arguments:", toolCall.arguments);
           
           // Send error response back to realtime API
           if (dataChannel && dataChannel.readyState === 'open') {

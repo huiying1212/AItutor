@@ -288,25 +288,25 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
     const isEmpty = slides.length === 0;
 
     return (
-      <div className="flex items-center justify-center space-x-3 bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl shadow-lg p-3 border border-slate-600 mb-4">
+      <div className="flex items-center justify-center space-x-2 bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg shadow-md p-2 border border-slate-600 mb-3">
         <button
           onClick={handlePreviousSlide}
           disabled={isEmpty || currentSlideIndex <= 0}
-          className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-sm font-semibold shadow-md transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100"
+          className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-md hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-xs font-semibold shadow-sm transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100"
           title="Previous slide"
         >
           ‹ Previous
         </button>
         
         {isEmpty ? (
-          <div className="px-4 py-2 bg-slate-700 text-slate-400 border border-slate-500 rounded-lg text-sm min-w-[240px] font-medium text-center">
+          <div className="px-3 py-1.5 bg-slate-700 text-slate-400 border border-slate-500 rounded-md text-xs min-w-[180px] font-medium text-center">
             No slides yet
           </div>
         ) : (
           <select
             value={currentSlideIndex}
             onChange={(e) => handleSlideSelect(Number(e.target.value))}
-            className="px-4 py-2 bg-slate-700 text-white border border-slate-500 rounded-lg text-sm min-w-[240px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            className="px-3 py-1.5 bg-slate-700 text-white border border-slate-500 rounded-md text-xs min-w-[180px] font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
           >
             {slides.map((slide, index) => (
               <option key={index} value={index}>
@@ -319,13 +319,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
         <button
           onClick={handleNextSlide}
           disabled={isEmpty || currentSlideIndex >= slides.length - 1}
-          className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-sm font-semibold shadow-md transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100"
+          className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-md hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-xs font-semibold shadow-sm transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100"
           title="Next slide"
         >
           Next ›
         </button>
         
-        <div className="text-sm text-slate-200 ml-4 font-semibold bg-slate-600 px-4 py-2 rounded-lg">
+        <div className="text-xs text-slate-200 ml-2 font-semibold bg-slate-600 px-3 py-1.5 rounded-md">
           {isEmpty ? "0 / 0" : `${currentSlideIndex + 1} / ${slides.length}`}
         </div>
       </div>
@@ -1127,7 +1127,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
   return (
     <div className="size-full bg-gradient-to-br from-slate-300 via-gray-200 to-slate-300 flex flex-col items-center justify-center p-8">
       {renderNavigationControls()}
-      <div className="w-[800px] h-[450px] bg-gray-100 border-2 border-gray-300 rounded-2xl shadow-2xl overflow-hidden ring-4 ring-gray-300/50">
+      <div className="w-[850px] h-[480px] bg-gray-100 border-2 border-gray-300 rounded-2xl shadow-2xl overflow-hidden ring-4 ring-gray-300/50 mt-2">
         {renderContent()}
       </div>
     </div>

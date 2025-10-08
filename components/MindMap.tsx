@@ -219,23 +219,23 @@ const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
 
   if (!mindMapData) {
     return (
-      <div className="size-full flex items-center justify-center text-gray-400">
+      <div className="size-full flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50">
         <div className="text-center">
-          <div className="text-6xl mb-4">🧠</div>
-          <div className="text-xl">思维导图准备就绪</div>
-          <div className="text-sm mt-2">等待思维导图数据...</div>
+          <div className="text-7xl mb-6 animate-pulse">🧠</div>
+          <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">思维导图准备就绪</div>
+          <div className="text-sm mt-3 text-gray-600 bg-white/80 backdrop-blur-sm rounded-lg px-6 py-3 shadow-md">等待思维导图数据...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full bg-white flex flex-col">
+    <div className="h-full w-full bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">{mindMapData.title}</h2>
-        <p className="text-xs text-gray-500 mt-1">
-          点击节点查看详细信息
+      <div className="px-6 py-4 bg-gradient-to-r from-slate-800 to-slate-700 border-b-2 border-slate-600 shadow-lg">
+        <h2 className="text-lg font-bold text-white">{mindMapData.title}</h2>
+        <p className="text-xs text-slate-300 mt-1">
+          💡 点击节点查看详细信息
         </p>
       </div>
       
@@ -243,7 +243,7 @@ const MindMap: React.FC<MindMapProps> = ({ mindMapData }) => {
       <div className="flex-1 p-6">
         <div 
           ref={containerRef} 
-          className="w-full h-full"
+          className="w-full h-full rounded-lg shadow-inner bg-white/50 backdrop-blur-sm"
           style={{ minHeight: '400px' }}
         />
       </div>

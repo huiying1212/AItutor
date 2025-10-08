@@ -285,42 +285,48 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
   };
 
   const renderNavigationControls = () => {
-    const isHidden = slides.length === 0;
+    const isEmpty = slides.length === 0;
 
     return (
-      <div className={`flex items-center justify-center space-x-2 bg-white rounded-lg shadow-md p-3 border mb-4 ${isHidden ? 'invisible' : ''}`}>
+      <div className="flex items-center justify-center space-x-3 bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl shadow-lg p-3 border border-slate-600 mb-4">
         <button
           onClick={handlePreviousSlide}
-          disabled={currentSlideIndex <= 0}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
+          disabled={isEmpty || currentSlideIndex <= 0}
+          className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-sm font-semibold shadow-md transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100"
           title="Previous slide"
         >
           ‹ Previous
         </button>
         
-        <select
-          value={currentSlideIndex}
-          onChange={(e) => handleSlideSelect(Number(e.target.value))}
-          className="px-3 py-2 border rounded text-sm min-w-[200px]"
-        >
-          {slides.map((slide, index) => (
-            <option key={index} value={index}>
-              {index + 1}. {slide.title.substring(0, 30)}{slide.title.length > 30 ? '...' : ''}
-            </option>
-          ))}
-        </select>
+        {isEmpty ? (
+          <div className="px-4 py-2 bg-slate-700 text-slate-400 border border-slate-500 rounded-lg text-sm min-w-[240px] font-medium text-center">
+            No slides yet
+          </div>
+        ) : (
+          <select
+            value={currentSlideIndex}
+            onChange={(e) => handleSlideSelect(Number(e.target.value))}
+            className="px-4 py-2 bg-slate-700 text-white border border-slate-500 rounded-lg text-sm min-w-[240px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+          >
+            {slides.map((slide, index) => (
+              <option key={index} value={index}>
+                {index + 1}. {slide.title.substring(0, 30)}{slide.title.length > 30 ? '...' : ''}
+              </option>
+            ))}
+          </select>
+        )}
         
         <button
           onClick={handleNextSlide}
-          disabled={currentSlideIndex >= slides.length - 1}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
+          disabled={isEmpty || currentSlideIndex >= slides.length - 1}
+          className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-sm font-semibold shadow-md transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100"
           title="Next slide"
         >
           Next ›
         </button>
         
-        <div className="text-sm text-gray-600 ml-4 font-medium">
-          {currentSlideIndex + 1} / {slides.length}
+        <div className="text-sm text-slate-200 ml-4 font-semibold bg-slate-600 px-4 py-2 rounded-lg">
+          {isEmpty ? "0 / 0" : `${currentSlideIndex + 1} / ${slides.length}`}
         </div>
       </div>
     );
@@ -364,11 +370,20 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
   const renderContent = () => {
     if (!content) {
       return (
-        <div className="size-full flex items-center justify-center text-gray-400">
-          <div className="text-center">
-            <div className="text-6xl mb-4">📋</div>
-            <div className="text-xl">白板准备就绪</div>
-            <div className="text-sm mt-2">等待内容显示...</div>
+        <div className="size-full flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+          <div className="text-center max-w-2xl px-8">
+            <div className="text-7xl mb-6">👩‍🏫</div>
+            <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+              Ask me anything!
+            </div>
+            <div className="text-sm mt-4 text-gray-700 bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200">
+              <span className="font-bold text-lg text-blue-600 block mb-3">📋 Quick Start Guide</span>
+              <ol className="list-decimal list-inside mt-2 space-y-2 text-left">
+                <li className="leading-relaxed">Click the <span className="font-semibold text-blue-600">WiFi button</span> in the top-right corner and wait for it to turn <span className="text-green-600 font-semibold">green</span> before starting. <span className="text-xs text-gray-500 block ml-5 mt-1">(You can also use the text input in quiet environments)</span></li>
+                <li className="leading-relaxed">The whiteboard will automatically display relevant information based on your conversation. Use the navigation bar at the top to review previous content.</li>
+                <li className="leading-relaxed">When finished, click the WiFi button again to disconnect.</li>
+              </ol>
+            </div>
           </div>
         </div>
       );
@@ -384,10 +399,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
       return (
         <div className="h-full w-full bg-gradient-to-br from-blue-50 to-white p-4">
           {/* Header */}
-          <div className="text-center mb-4">
-            <h2 className="text-xl font-bold text-blue-900">{content.title}</h2>
+          <div className="text-center mb-4 bg-white/60 backdrop-blur-sm rounded-lg py-3 px-4 shadow-sm">
+            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{content.title}</h2>
             {content.content && (
-              <div className="text-gray-600 text-sm mt-2">
+              <div className="text-gray-700 text-sm mt-2 font-medium">
                 {content.content}
               </div>
             )}
@@ -398,8 +413,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
             {imageCount === 1 && content.images && (
               // Single image - centered
               <div className="h-full flex items-center justify-center">
-                <div className="bg-white rounded-lg shadow-md overflow-hidden border max-w-2xl max-h-full">
-                  <div className="h-[85%] bg-gray-100">
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gray-200 max-w-2xl max-h-full">
+                  <div className="h-[85%] bg-gradient-to-br from-gray-50 to-gray-100">
                     <img 
                       src={content.images[0].url} 
                       alt={content.images[0].description}
@@ -554,10 +569,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
       return (
         <div className="h-full w-full bg-gradient-to-br from-blue-50 to-white p-4">
           {/* Header */}
-          <div className="text-center mb-4">
-            <h2 className="text-xl font-bold text-blue-900">{content.title}</h2>
+          <div className="text-center mb-4 bg-white/60 backdrop-blur-sm rounded-lg py-3 px-4 shadow-sm">
+            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{content.title}</h2>
             {content.content && (
-              <div className="text-gray-600 text-sm mt-2">
+              <div className="text-gray-700 text-sm mt-2 font-medium">
                 {content.content}
               </div>
             )}
@@ -568,7 +583,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
             {!hasImages ? (
               // Chart only - centered
               <div className="h-full flex items-center justify-center">
-                <div className="bg-white rounded-lg shadow-md p-6 max-w-4xl w-full">
+                <div className="bg-white rounded-xl shadow-lg p-8 max-w-4xl w-full border border-gray-200">
                   {renderChart(content.chart)}
                 </div>
               </div>
@@ -576,7 +591,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               // Chart with images - side by side
               <div className="flex h-full gap-4">
                 {/* Left: Chart (60%) */}
-                <div className="flex-[3] bg-white rounded-lg shadow-md overflow-hidden border p-4">
+                <div className="flex-[3] bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gray-200 p-6">
                   <div className="h-full flex items-center justify-center">
                     {renderChart(content.chart)}
                   </div>
@@ -695,8 +710,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
         return (
           <div className="h-full w-full bg-gradient-to-br from-blue-50 to-white p-4">
             {/* Header */}
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-bold text-blue-900">{content.title}</h2>
+            <div className="text-center mb-4 bg-white/60 backdrop-blur-sm rounded-lg py-3 px-4 shadow-sm">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{content.title}</h2>
             </div>
             
             {/* Side-by-side layout */}
@@ -708,11 +723,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   return (
                     <div
                       key={index}
-                      className={`flex items-start space-x-2 p-2 rounded-lg bg-white shadow-sm border-l-4 transition-all duration-300 ${
-                        isHighlighted ? 'border-yellow-400 bg-yellow-50' : 'border-blue-400 hover:shadow-md'
+                      className={`flex items-start space-x-3 p-3 rounded-lg bg-white shadow-md border-l-4 transition-all duration-300 ${
+                        isHighlighted ? 'border-yellow-400 bg-yellow-50 shadow-lg' : 'border-blue-500 hover:shadow-lg hover:border-blue-600'
                       }`}
                     >
-                      <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">
+                      <div className="flex-shrink-0 w-7 h-7 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-xs shadow-md">
                         {index + 1}
                       </div>
                       <div className="text-xs leading-relaxed text-gray-800 flex-1">
@@ -837,8 +852,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
       // Fallback: Single column layout
       return (
         <div className="h-full w-full bg-gradient-to-br from-blue-50 to-white p-4">
-          <div className="text-center mb-4">
-            <h2 className="text-xl font-bold text-blue-900">{content.title}</h2>
+          <div className="text-center mb-4 bg-white/60 backdrop-blur-sm rounded-lg py-3 px-4 shadow-sm">
+            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{content.title}</h2>
           </div>
           
           <div className="h-[calc(100%-60px)] overflow-hidden">
@@ -848,11 +863,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                 return (
                   <div
                     key={index}
-                    className={`flex items-start space-x-2 p-2 rounded-lg bg-white shadow-sm border-l-4 transition-all duration-300 ${
-                      isHighlighted ? 'border-yellow-400 bg-yellow-50' : 'border-blue-400 hover:shadow-md'
+                    className={`flex items-start space-x-3 p-3 rounded-lg bg-white shadow-md border-l-4 transition-all duration-300 ${
+                      isHighlighted ? 'border-yellow-400 bg-yellow-50 shadow-lg' : 'border-blue-500 hover:shadow-lg hover:border-blue-600'
                     }`}
                   >
-                    <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">
+                    <div className="flex-shrink-0 w-7 h-7 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-xs shadow-md">
                       {index + 1}
                     </div>
                     <div className="text-xs leading-relaxed text-gray-800 flex-1">
@@ -912,8 +927,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
     return (
       <div className="h-full w-full bg-gradient-to-br from-blue-50 to-white p-4">
         {/* Header */}
-        <div className="text-center mb-4">
-          <h2 className="text-xl font-bold text-blue-900">{content.title}</h2>
+        <div className="text-center mb-4 bg-white/60 backdrop-blur-sm rounded-lg py-3 px-4 shadow-sm">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{content.title}</h2>
         </div>
         
         {/* Content Layout */}
@@ -921,7 +936,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
           {!hasImages ? (
             // Text only - centered content area
             <div className="h-full flex items-center justify-center">
-              <div className="bg-white rounded-lg shadow-md p-6 max-w-4xl w-full max-h-full overflow-y-auto">
+              <div className="bg-white rounded-xl shadow-lg p-8 max-w-4xl w-full max-h-full overflow-y-auto border border-gray-200">
                 <div className="text-sm leading-relaxed text-gray-800">
                   {isMarkdownContent(content.content) ? (
                     <div className="prose prose-sm max-w-none">
@@ -984,7 +999,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
             // Text with images - side by side
             <div className="flex h-full gap-4">
               {/* Left: Text content (60%) */}
-              <div className="flex-[3] bg-white rounded-lg shadow-md overflow-hidden border p-4">
+              <div className="flex-[3] bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gray-200 p-6">
                 <div className="h-full overflow-y-auto">
                   <div className="text-xs leading-relaxed text-gray-800">
                     {isMarkdownContent(content.content) ? (
@@ -1110,9 +1125,9 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
   };
 
   return (
-    <div className="size-full bg-gray-50 flex flex-col items-center justify-center p-8">
+    <div className="size-full bg-gradient-to-br from-slate-300 via-gray-200 to-slate-300 flex flex-col items-center justify-center p-8">
       {renderNavigationControls()}
-      <div className="w-[800px] h-[450px] bg-white border-2 border-gray-200 rounded-lg shadow-lg">
+      <div className="w-[800px] h-[450px] bg-gray-100 border-2 border-gray-300 rounded-2xl shadow-2xl overflow-hidden ring-4 ring-gray-300/50">
         {renderContent()}
       </div>
     </div>

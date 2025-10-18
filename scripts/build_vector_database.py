@@ -155,50 +155,76 @@ class MultimodalVectorDatabase:
         """
         print("构建文本向量数据库...")
         
-        # 读取文本数据
+        # 读取文本数据（支持 JSONL 格式）
+        content_data = []
         with open(content_file, 'r', encoding='utf-8') as f:
-            content_data = json.load(f)
+            # 尝试读取第一行来判断是 JSON 还是 JSONL
+            first_line = f.readline()
+            f.seek(0)
+            
+            if first_line.strip().startswith('['):
+                # JSON 数组格式
+                content_data = json.load(f)
+            else:
+                # JSONL 格式（每行一个 JSON 对象）
+                for line in f:
+                    if line.strip():
+                        content_data.append(json.loads(line))
         
         texts = []
         metadata = []
         
         for item in content_data:
-            # 分割长文本为段落
-            chapter_text = item['chapter_test']
-            chapter_name = item['chapter_name']
-            chapter_number = item['chapter_number']
-            
-            # 按句子分割文本，每个片段约500字符
-            sentences = chapter_text.split('. ')
-            current_chunk = ""
-            chunk_id = 0
-            
-            for sentence in sentences:
-                if len(current_chunk) + len(sentence) < 500:
-                    current_chunk += sentence + '. '
-                else:
-                    if current_chunk.strip():
-                        texts.append(current_chunk.strip())
-                        metadata.append({
-                            'chapter_number': chapter_number,
-                            'chapter_name': chapter_name,
-                            'chunk_id': chunk_id,
-                            'text': current_chunk.strip(),
-                            'type': 'text'
-                        })
-                        chunk_id += 1
-                    current_chunk = sentence + '. '
-            
-            # 添加最后一个片段
-            if current_chunk.strip():
-                texts.append(current_chunk.strip())
+            # 检查数据格式：如果有 'text' 字段，说明是已分块的数据（JSONL格式）
+            # 如果有 'chapter_test' 字段，说明是原始未分块的数据（JSON格式）
+            if 'text' in item:
+                # 已分块的 JSONL 格式数据，直接使用
+                texts.append(item['text'])
                 metadata.append({
-                    'chapter_number': chapter_number,
-                    'chapter_name': chapter_name,
-                    'chunk_id': chunk_id,
-                    'text': current_chunk.strip(),
-                    'type': 'text'
+                    'chapter_number': item.get('chapter_number', 0),
+                    'chapter_name': item.get('chapter_name', ''),
+                    'chunk_id': item.get('chunk_id', 0),
+                    'text': item['text'],
+                    'type': 'text',
+                    'id': item.get('id', '')
                 })
+            elif 'chapter_test' in item:
+                # 原始未分块的 JSON 格式数据，需要分块
+                chapter_text = item['chapter_test']
+                chapter_name = item['chapter_name']
+                chapter_number = item['chapter_number']
+                
+                # 按句子分割文本，每个片段约500字符
+                sentences = chapter_text.split('. ')
+                current_chunk = ""
+                chunk_id = 0
+                
+                for sentence in sentences:
+                    if len(current_chunk) + len(sentence) < 500:
+                        current_chunk += sentence + '. '
+                    else:
+                        if current_chunk.strip():
+                            texts.append(current_chunk.strip())
+                            metadata.append({
+                                'chapter_number': chapter_number,
+                                'chapter_name': chapter_name,
+                                'chunk_id': chunk_id,
+                                'text': current_chunk.strip(),
+                                'type': 'text'
+                            })
+                            chunk_id += 1
+                        current_chunk = sentence + '. '
+                
+                # 添加最后一个片段
+                if current_chunk.strip():
+                    texts.append(current_chunk.strip())
+                    metadata.append({
+                        'chapter_number': chapter_number,
+                        'chapter_name': chapter_name,
+                        'chunk_id': chunk_id,
+                        'text': current_chunk.strip(),
+                        'type': 'text'
+                    })
         
         # 编码文本
         embeddings = self.encode_text(texts)
@@ -309,8 +335,8 @@ def main():
     args = parser.parse_args()
     
     # 检查输入文件
-    content_file = os.path.join(args.data_dir, "content.json")
-    image_file = os.path.join(args.data_dir, "image.json")
+    content_file = os.path.join(args.data_dir, "content2.jsonl")
+    image_file = os.path.join(args.data_dir, "image2.json")
     image_dir = os.path.join(args.data_dir, "images")
     
     if not os.path.exists(content_file):

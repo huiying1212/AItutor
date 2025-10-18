@@ -28,8 +28,8 @@ def check_directories():
 def check_files():
     """检查必要的文件"""
     required_files = [
-        "./public/example-structuredDATA/content.json",
-        "./public/example-structuredDATA/image.json",
+        "./public/example-structuredDATA/content2.jsonl",
+        "./public/example-structuredDATA/image2.json",
         "./models/clip-vit-base-patch32/config.json",
         "./requirements.txt"
     ]
@@ -111,19 +111,22 @@ def main():
     print("\n4. 检查知识库数据...")
     data_dir = "./public/example-structuredDATA"
     
-    if os.path.exists(os.path.join(data_dir, "content.json")):
+    if os.path.exists(os.path.join(data_dir, "content2.jsonl")):
         try:
             import json
-            with open(os.path.join(data_dir, "content.json"), 'r', encoding='utf-8') as f:
-                content_data = json.load(f)
-            print(f"✓ 文本数据: {len(content_data)} 个章节")
+            content_data = []
+            with open(os.path.join(data_dir, "content2.jsonl"), 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.strip():
+                        content_data.append(json.loads(line))
+            print(f"✓ 文本数据: {len(content_data)} 条记录")
         except Exception as e:
             print(f"✗ 文本数据文件错误: {e}")
     
-    if os.path.exists(os.path.join(data_dir, "image.json")):
+    if os.path.exists(os.path.join(data_dir, "image2.json")):
         try:
             import json
-            with open(os.path.join(data_dir, "image.json"), 'r', encoding='utf-8') as f:
+            with open(os.path.join(data_dir, "image2.json"), 'r', encoding='utf-8') as f:
                 image_data = json.load(f)
             print(f"✓ 图片元数据: {len(image_data)} 张图片")
         except Exception as e:

@@ -67,7 +67,7 @@ pip-delete-this-directory.txt
 !/models/.gitkeep
 
 # 知识库数据
-/public/example-structuredDATA/
+# /public/example-structuredDATA/
 # 如果需要提交知识库数据，请注释上面这行
 
 # 测试和临时文件

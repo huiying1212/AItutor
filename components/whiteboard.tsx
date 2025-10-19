@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -414,11 +415,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               // Single image - centered
               <div className="h-full flex items-center justify-center">
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gray-200 max-w-2xl max-h-full">
-                  <div className="h-[85%] bg-gradient-to-br from-gray-50 to-gray-100">
-                    <img 
+                  <div className="h-[85%] bg-gradient-to-br from-gray-50 to-gray-100 relative">
+                    <Image 
                       src={content.images[0].url} 
                       alt={content.images[0].description}
-                      className="w-full h-full object-contain"
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
+                      className="object-contain"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                         const parent = (e.target as HTMLElement).parentElement;
@@ -445,11 +448,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               <div className="h-full flex gap-4">
                 {content.images.slice(0, 2).map((image, index) => (
                   <div key={index} className="flex-1 bg-white rounded-lg shadow-md overflow-hidden border">
-                    <div className="h-[85%] bg-gray-100">
-                      <img 
+                    <div className="h-[85%] bg-gray-100 relative">
+                      <Image 
                         src={image.url} 
                         alt={image.description}
-                        className="w-full h-full object-contain"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-contain"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                           const parent = (e.target as HTMLElement).parentElement;
@@ -480,11 +485,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                     <div className="flex-1 flex gap-2">
                       {content.images.slice(0, 2).map((image, index) => (
                         <div key={index} className="flex-1 bg-white rounded-lg shadow-md overflow-hidden border">
-                          <div className="h-[80%] bg-gray-100">
-                            <img 
-                              src={image.url} 
-                              alt={image.description}
-                              className="w-full h-full object-contain"
+                        <div className="h-[80%] bg-gray-100 relative">
+                          <Image 
+                            src={image.url} 
+                            alt={image.description}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-contain"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
                                 const parent = (e.target as HTMLElement).parentElement;
@@ -504,11 +511,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                     </div>
                     <div className="flex-1">
                       <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100">
-                          <img 
+                        <div className="h-[80%] bg-gray-100 relative">
+                          <Image 
                             src={content.images[2].url} 
                             alt={content.images[2].description}
-                            className="w-full h-full object-contain"
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-contain"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
                               const parent = (e.target as HTMLElement).parentElement;
@@ -532,11 +541,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   <div className="h-full grid grid-cols-2 gap-2">
                     {content.images.slice(0, 4).map((image, index) => (
                       <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100">
-                          <img 
+                        <div className="h-[80%] bg-gray-100 relative">
+                          <Image 
                             src={image.url} 
                             alt={image.description}
-                            className="w-full h-full object-contain"
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-contain"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
                               const parent = (e.target as HTMLElement).parentElement;
@@ -601,11 +612,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                 <div className="flex-[2] overflow-hidden">
                   {imageCount === 1 && content.images && (
                     <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
-                      <div className="h-[85%] bg-gray-100">
-                        <img 
+                      <div className="h-[85%] bg-gray-100 relative">
+                        <Image 
                           src={content.images[0].url} 
                           alt={content.images[0].description}
-                          className="w-full h-full object-contain"
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
+                          className="object-contain"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                             const parent = (e.target as HTMLElement).parentElement;
@@ -630,11 +643,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                     <div className="h-full space-y-2">
                       {content.images.slice(0, 2).map((image, index) => (
                         <div key={index} className="h-[48%] bg-white rounded-lg shadow-md overflow-hidden border">
-                          <div className="h-[80%] bg-gray-100">
-                            <img 
-                              src={image.url} 
-                              alt={image.description}
-                              className="w-full h-full object-contain"
+                        <div className="h-[80%] bg-gray-100 relative">
+                          <Image 
+                            src={image.url} 
+                            alt={image.description}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-contain"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
                                 const parent = (e.target as HTMLElement).parentElement;
@@ -658,11 +673,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                     <div className="h-full grid grid-cols-2 gap-2">
                       {content.images.slice(0, 4).map((image, index) => (
                         <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">
-                          <div className="h-[80%] bg-gray-100">
-                            <img 
-                              src={image.url} 
-                              alt={image.description}
-                              className="w-full h-full object-contain"
+                        <div className="h-[80%] bg-gray-100 relative">
+                          <Image 
+                            src={image.url} 
+                            alt={image.description}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-contain"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
                                 const parent = (e.target as HTMLElement).parentElement;
@@ -760,11 +777,12 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   // Single image - full height
                   content.images && (
                   <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
-                    <div className="h-[85%] bg-gray-100">
-                      <img 
+                    <div className="h-[85%] bg-gray-100 relative">
+                      <Image 
                         src={content.images[0].url} 
                         alt={content.images[0].description}
-                        className="w-full h-full object-contain"
+                        fill
+                        className="object-contain"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                           const parent = (e.target as HTMLElement).parentElement;
@@ -791,11 +809,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   <div className="h-full space-y-2">
                     {content.images.slice(0, 2).map((image, index) => (
                       <div key={index} className="h-[48%] bg-white rounded-lg shadow-md overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100">
-                          <img 
+                        <div className="h-[80%] bg-gray-100 relative">
+                          <Image 
                             src={image.url} 
                             alt={image.description}
-                            className="w-full h-full object-contain"
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-contain"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
                               const parent = (e.target as HTMLElement).parentElement;
@@ -820,11 +840,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   <div className="h-full grid grid-cols-2 gap-2">
                     {content.images.slice(0, 4).map((image, index) => (
                       <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100">
-                          <img 
+                        <div className="h-[80%] bg-gray-100 relative">
+                          <Image 
                             src={image.url} 
                             alt={image.description}
-                            className="w-full h-full object-contain"
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-contain"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
                               const parent = (e.target as HTMLElement).parentElement;
@@ -899,11 +921,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               <div className="grid grid-cols-3 gap-2">
                 {content.images.slice(0, 3).map((image, index) => (
                   <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">
-                    <div className="aspect-video bg-gray-100">
-                      <img 
+                    <div className="aspect-video bg-gray-100 relative">
+                      <Image 
                         src={image.url} 
                         alt={image.description}
-                        className="w-full h-full object-contain"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-contain"
                       />
                     </div>
                     <div className="p-1">
@@ -1036,11 +1060,12 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
               <div className="flex-[2] overflow-hidden">
                 {imageCount === 1 && content.images && (
                   <div className="h-full bg-white rounded-lg shadow-md overflow-hidden border">
-                    <div className="h-[85%] bg-gray-100">
-                      <img 
+                    <div className="h-[85%] bg-gray-100 relative">
+                      <Image 
                         src={content.images[0].url} 
                         alt={content.images[0].description}
-                        className="w-full h-full object-contain"
+                        fill
+                        className="object-contain"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                           const parent = (e.target as HTMLElement).parentElement;
@@ -1065,11 +1090,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   <div className="h-full space-y-2">
                     {content.images.slice(0, 2).map((image, index) => (
                       <div key={index} className="h-[48%] bg-white rounded-lg shadow-md overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100">
-                          <img 
+                        <div className="h-[80%] bg-gray-100 relative">
+                          <Image 
                             src={image.url} 
                             alt={image.description}
-                            className="w-full h-full object-contain"
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-contain"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
                               const parent = (e.target as HTMLElement).parentElement;
@@ -1093,11 +1120,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ toolCall }) => {
                   <div className="h-full grid grid-cols-2 gap-2">
                     {content.images.slice(0, 4).map((image, index) => (
                       <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden border">
-                        <div className="h-[80%] bg-gray-100">
-                          <img 
+                        <div className="h-[80%] bg-gray-100 relative">
+                          <Image 
                             src={image.url} 
                             alt={image.description}
-                            className="w-full h-full object-contain"
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-contain"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
                               const parent = (e.target as HTMLElement).parentElement;

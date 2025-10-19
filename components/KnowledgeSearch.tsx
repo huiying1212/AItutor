@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Search, Upload, Image, FileText, Loader2, AlertCircle } from 'lucide-react';
+import Image from 'next/image';
+import { Search, Upload, Image as ImageIcon, FileText, Loader2, AlertCircle } from 'lucide-react';
 
 interface TextResult {
   chapter_number: number;
@@ -146,7 +147,7 @@ const KnowledgeSearch: React.FC = () => {
 
   const renderResult = (result: TextResult | ImageResult, index: number) => {
     const isText = result.type === 'text';
-    const IconComponent = isText ? FileText : Image;
+    const IconComponent = isText ? FileText : ImageIcon;
     const colorClass = isText ? 'text-blue-600' : 'text-green-600';
     
     return (
@@ -175,10 +176,13 @@ const KnowledgeSearch: React.FC = () => {
           </p>
         ) : (
           <div className="flex flex-col md:flex-row gap-4">
-            <img 
+            <Image 
               src={`/example-structuredDATA/images/${(result as ImageResult).image_url}`}
               alt={(result as ImageResult).image_description}
+              width={192}
+              height={128}
               className="w-full md:w-48 h-32 object-cover rounded-lg"
+              sizes="(max-width: 768px) 100vw, 192px"
               onError={(e) => {
                 console.log(`图片加载失败: ${(result as ImageResult).image_url}`);
                 e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEzMyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuWbvueJh+aXoOazleWKoOi9vTwvdGV4dD48L3N2Zz4=';

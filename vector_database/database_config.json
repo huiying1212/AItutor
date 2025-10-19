@@ -1,0 +1,6 @@
+{
+  "embedding_dim": 512,
+  "text_count": 1063,
+  "image_count": 556,
+  "model_path": "./models/clip-vit-base-patch32"
+}

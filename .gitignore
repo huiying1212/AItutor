@@ -1,0 +1,128 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# ==========================================
+# 多模态向量数据库相关文件
+# ==========================================
+
+# Python 环境
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# 向量数据库文件（体积大）
+# /vector_database/
+# *.faiss
+# *.pkl
+# *.pickle
+
+# CLIP模型文件（体积大）
+/models/
+!/models/.gitkeep
+
+# 知识库数据
+/public/example-structuredDATA/
+# 如果需要提交知识库数据，请注释上面这行
+
+# 测试和临时文件
+test_results.json
+test_api_simple.py
+/temp/
+/tmp/
+
+# Python 包和构建文件
+.eggs/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+# lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyTorch 模型缓存
+.cache/
+**/checkpoints/
+**/logs/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# 数据和模型相关
+*.h5
+*.hdf5
+*.model
+*.weights
+*.pt
+*.pth
+*.onnx
+*.tflite
+
+# 系统文件
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE 配置
+.vscode/
+.idea/
+*.sublime-*
+.spyderproject
+.spyproject

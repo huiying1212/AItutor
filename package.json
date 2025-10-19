@@ -1,0 +1,49 @@
+{
+  "name": "realtime-intelligent-tutor",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "setup-env": "python scripts/setup.py",
+    "build-vector-db": "python scripts/build_vector_database.py",
+    "search-knowledge": "python scripts/search_knowledge.py",
+    "start-api": "python scripts/knowledge_api.py",
+    "install-python-deps": "pip install -r requirements.txt",
+    "test-system": "python scripts/test_system.py"
+  },
+  "dependencies": {
+    "axios": "^1.12.2",
+    "chart.js": "^4.4.7",
+    "cytoscape": "^3.33.1",
+    "cytoscape-dagre": "^2.5.0",
+    "cytoscape-fcose": "^2.2.0",
+    "cytoscape-svg": "^0.4.0",
+    "dagre": "^0.8.5",
+    "highlight.js": "^11.11.1",
+    "lucide-react": "^0.469.0",
+    "next": "15.1.3",
+    "react": "^19.0.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/dagre": "^0.7.53",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.1.3",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}

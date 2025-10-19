@@ -3,9 +3,7 @@ title: AI Tutor
 emoji: 🧠
 colorFrom: blue
 colorTo: purple
-sdk: gradio
-sdk_version: 4.0.0
-app_file: app.py
+sdk: docker  
 pinned: false
 ---
 # 智能助教系统 - AI Intelligent Tutor

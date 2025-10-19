@@ -1,3 +1,13 @@
+---
+title: AI Tutor
+emoji: 🧠
+colorFrom: blue
+colorTo: purple
+sdk: gradio
+sdk_version: 4.0.0
+app_file: app.py
+pinned: false
+---
 # 智能助教系统 - AI Intelligent Tutor
 
 基于OpenAI Realtime API的智能助教系统，通过语音交互和智能白板为学生提供个性化的学习体验，并集成了多模态知识检索系统，支持文本和图片的语义搜索。

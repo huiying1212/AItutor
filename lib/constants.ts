@@ -1,5 +1,5 @@
 // AI Provider Configuration
-export type AIProvider = "openai" | "aliyun";
+export type AIProvider = "openai" | "aliyun" | "stepfun";
 
 // OpenAI Configuration
 export const OPENAI_CONFIG = {
@@ -17,13 +17,24 @@ export const ALIYUN_CONFIG = {
   voice: "Cherry" // Aliyun voice options (Cherry, Ethan, Nofish, Jennifer, Ryan, Katerina, Elias, etc.)
 } as const;
 
+// StepFun Configuration
+export const STEPFUN_CONFIG = {
+  model: "step-audio-2-mini",
+  baseUrl: "wss://api.stepfun.com/v1/realtime",
+  sessionUrl: null, // StepFun doesn't use REST session endpoint, uses WebSocket directly
+  voice: "coral" // StepFun voice options
+} as const;
+
 // Current active provider - change this to switch between providers
-export const ACTIVE_PROVIDER = "aliyun" as AIProvider; // Change to "openai" to use OpenAI
+export const ACTIVE_PROVIDER = "stepfun" as AIProvider; // Change to "openai", "aliyun", or "stepfun"
 
 // Get current configuration based on active provider
 export function getCurrentConfig() {
   if (ACTIVE_PROVIDER === "openai") {
     return OPENAI_CONFIG;
+  }
+  if (ACTIVE_PROVIDER === "stepfun") {
+    return STEPFUN_CONFIG;
   }
   return ALIYUN_CONFIG;
 }

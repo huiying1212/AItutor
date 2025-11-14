@@ -1,5 +1,5 @@
 import { VOICE, TOOLS, INSTRUCTIONS } from "@/lib/config";
-import { ACTIVE_PROVIDER, getCurrentConfig, OPENAI_CONFIG, ALIYUN_CONFIG } from "@/lib/constants";
+import { ACTIVE_PROVIDER, getCurrentConfig, OPENAI_CONFIG, ALIYUN_CONFIG, STEPFUN_CONFIG } from "@/lib/constants";
 
 // Get an ephemeral session token from the /realtime/sessions endpoint
 export async function GET() {
@@ -14,6 +14,8 @@ export async function GET() {
       return await createOpenAISession();
     } else if (provider === "aliyun") {
       return await createAliyunSession();
+    } else if (provider === "stepfun") {
+      return await createStepFunSession();
     } else {
       throw new Error(`Unknown provider: ${provider}`);
     }
@@ -88,6 +90,32 @@ async function createAliyunSession() {
   };
 
   console.log("Aliyun session info prepared:", sessionData.id);
+
+  return new Response(JSON.stringify(sessionData), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+// Create StepFun session
+// Note: StepFun uses WebSocket directly, no REST session endpoint
+async function createStepFunSession() {
+  if (!process.env.STEPFUN_API_KEY) {
+    throw new Error("STEPFUN_API_KEY environment variable is not set");
+  }
+
+  // StepFun doesn't have a REST session endpoint like OpenAI
+  // Instead, we return the API key for WebSocket authentication
+  const sessionData = {
+    id: `stepfun-session-${Date.now()}`,
+    api_key: process.env.STEPFUN_API_KEY,
+    model: STEPFUN_CONFIG.model,
+    voice: STEPFUN_CONFIG.voice,
+  };
+
+  console.log("StepFun session info prepared:", sessionData.id);
 
   return new Response(JSON.stringify(sessionData), {
     status: 200,

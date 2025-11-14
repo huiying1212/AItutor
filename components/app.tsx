@@ -39,7 +39,7 @@ export default function App() {
   const nextPlayTime = useRef<number>(0);
 
 
-  // Start Aliyun WebSocket session
+  // Start WebSocket session (for Aliyun and StepFun)
   async function startAliyunWebSocketSession() {
     try {
       // Get API key from session endpoint
@@ -51,7 +51,7 @@ export default function App() {
       
       const session = await sessionResponse.json();
       if (!session.api_key) {
-        throw new Error("Invalid Aliyun session response: missing api_key");
+        throw new Error(`Invalid ${ACTIVE_PROVIDER} session response: missing api_key`);
       }
       
       const config = getCurrentConfig();
@@ -60,7 +60,7 @@ export default function App() {
       
       // Construct WebSocket URL
       // Browser WebSocket doesn't support custom headers during handshake
-      // Aliyun requires Authorization header, so we use a local proxy server
+      // StepFun and Aliyun require Authorization header, so we use a local proxy server
       // The proxy server (websocket-proxy.js) adds the Authorization header
       
       // Check if we're using the proxy (development) or direct connection (if supported)
@@ -70,12 +70,12 @@ export default function App() {
       let wsUrl: string;
       if (useProxy) {
         // Use local proxy server
-        wsUrl = `${proxyUrl}?model=${MODEL}&apiKey=${encodeURIComponent(apiKey)}${workspace ? `&workspace=${encodeURIComponent(workspace)}` : ''}`;
-        console.log("Connecting to Aliyun via proxy:", wsUrl.replace(apiKey, '***'));
+        wsUrl = `${proxyUrl}?model=${MODEL}&apiKey=${encodeURIComponent(apiKey)}&provider=${ACTIVE_PROVIDER}${workspace ? `&workspace=${encodeURIComponent(workspace)}` : ''}`;
+        console.log(`Connecting to ${ACTIVE_PROVIDER} via proxy:`, wsUrl.replace(apiKey, '***'));
       } else {
         // Try direct connection (may not work due to browser limitations)
         wsUrl = `${BASE_URL}?model=${MODEL}`;
-        console.log("Attempting direct connection to Aliyun:", wsUrl);
+        console.log(`Attempting direct connection to ${ACTIVE_PROVIDER}:`, wsUrl);
         console.warn("Note: Direct connection may fail due to browser WebSocket header limitations");
       }
       
@@ -84,12 +84,12 @@ export default function App() {
       
       // Set up WebSocket event handlers
       ws.onopen = () => {
-        console.log("Aliyun WebSocket connected");
+        console.log(`${ACTIVE_PROVIDER} WebSocket connected`);
         setConnectionState('connected');
         setIsSessionActive(true);
         setIsListening(true);
         
-        // Send session configuration (OpenAI-compatible format for Aliyun)
+        // Send session configuration (OpenAI-compatible format)
         const sessionUpdate = {
           type: "session.update",
           session: {
@@ -109,7 +109,7 @@ export default function App() {
         };
         
         ws.send(JSON.stringify(sessionUpdate));
-        console.log("Session configuration sent (Aliyun format)");
+        console.log(`Session configuration sent (${ACTIVE_PROVIDER} format)`);
       };
       
       ws.onmessage = async (event) => {
@@ -444,8 +444,8 @@ export default function App() {
         const config = getCurrentConfig();
         console.log(`Starting ${ACTIVE_PROVIDER.toUpperCase()} session with model: ${config.model}`);
         
-        if (ACTIVE_PROVIDER === "aliyun") {
-          // Aliyun uses WebSocket, not WebRTC
+        if (ACTIVE_PROVIDER === "aliyun" || ACTIVE_PROVIDER === "stepfun") {
+          // Aliyun and StepFun use WebSocket, not WebRTC
           await startAliyunWebSocketSession();
           return;
         }

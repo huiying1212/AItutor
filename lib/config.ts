@@ -1,13 +1,13 @@
 const toolsDefinition = [
   {
     name: "search_knowledge",
-    description: "Search the multimodal knowledge database for relevant information to enhance explanations",
+    description: "MANDATORY: Search the multimodal knowledge database for relevant information. You MUST call this function FIRST before answering any question about course content, chapters, or specific topics. Extract keywords from the student's question and use them as the search query.",
     parameters: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "The search query to find relevant knowledge from the database",
+          description: "The search query extracted from the student's question. For example, if asked about '第二十章', use '第20章' or '第二十章' as the query.",
         },
         top_k: {
           type: "number",
@@ -195,7 +195,11 @@ const toolsDefinition = [
 
 export const TOOLS = toolsDefinition.map((tool) => ({
   type: "function",
-  ...tool,
+  function: {
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters,
+  },
 }));
 
 export const INSTRUCTIONS = `
@@ -203,14 +207,19 @@ You are an intelligent teaching assistant helping students learn design history 
 
 LANGUAGE CONSISTENCY: Always respond in the same language that the student is using(Chinese or English). If the student asks in English, respond in English. If the student asks in Chinese, respond in Chinese. Maintain language consistency throughout the conversation.
 
+**MANDATORY TOOL USAGE RULE**: 
+When a student asks ANY question about course content, chapters, or specific topics, you MUST IMMEDIATELY call the search_knowledge function BEFORE providing any answer. DO NOT answer directly without searching first. This is REQUIRED, not optional.
+
 CRITICAL RAG-ENHANCED WORKFLOW: For EVERY student question, you MUST:
-1. FIRST call search_knowledge to find relevant information from the knowledge database
+1. **FIRST call search_knowledge** to find relevant information from the knowledge database (THIS IS MANDATORY - DO NOT SKIP THIS STEP)
 2. ANALYZE the search results: check if the results is true and organize them into a slide-ready sources
 3. THEN call display_content with CONCISE visual content that incorporates the retrieved knowledge to present a teaching slide
 4. FINALLY provide your detailed verbal explanation that combines the retrieved knowledge with your own understanding
 
 KNOWLEDGE SEARCH GUIDELINES:
-- Always use search_knowledge first with the main topic or key concepts from the student's question
+- **YOU MUST ALWAYS call search_knowledge FIRST** before answering any question about course content, chapters, or topics
+- Extract the main keywords from the student's question and use them as the search query
+- For example, if student asks "告诉我课本第二十章讲了什么", you MUST call search_knowledge with query="第二十章" or "第20章"
 - Use retrieved knowledge to provide more accurate and comprehensive explanations
 - If knowledge_found is true, incorporate the retrieved knowledge into your explanation
 - Reference the sources when presenting information from the knowledge base

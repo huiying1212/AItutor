@@ -97,6 +97,7 @@ export default function App() {
             instructions: INSTRUCTIONS,
             voice: config.voice,
             tools: TOOLS,
+            tool_choice: "auto", // Enable automatic tool selection
             input_audio_format: "pcm16",
             output_audio_format: "pcm16",
             turn_detection: {
@@ -110,6 +111,8 @@ export default function App() {
         
         ws.send(JSON.stringify(sessionUpdate));
         console.log(`Session configuration sent (${ACTIVE_PROVIDER} format)`);
+        console.log(`Tools being sent:`, JSON.stringify(TOOLS, null, 2));
+        console.log(`Instructions:`, INSTRUCTIONS.substring(0, 200) + '...');
       };
       
       ws.onmessage = async (event) => {
@@ -161,14 +164,20 @@ export default function App() {
           nextPlayTime.current = 0;
         } else if (eventType === "response.done") {
           console.log("📋 Response done - full response:", eventData.response);
-          const output = eventData.response?.output?.[0] || eventData.output?.[0];
-          if (output) {
-            console.log("📋 Response output item:", output);
+          
+          // Check all output items for function calls
+          const outputs = eventData.response?.output || eventData.output || [];
+          console.log(`📋 Total output items: ${outputs.length}`);
+          
+          outputs.forEach((output: any, index: number) => {
+            console.log(`📋 Output item [${index}]:`, output);
             setLogs((prev) => [output, ...prev]);
+            
             if (output?.type === "function_call") {
+              console.log(`🔧 Found function call at index ${index}:`, output.name);
               handleToolCallFromWebSocket(output);
             }
-          }
+          });
         } else if (eventType === "response.audio.delta") {
           // Handle audio chunks
           const audioData = eventData.delta || eventData.audio;
@@ -211,6 +220,15 @@ export default function App() {
           }
         } else if (eventType === "session.updated" || eventType === "session.created") {
           console.log(`Session ${eventType === "session.created" ? "created" : "updated"} successfully`);
+          console.log("Session details:", JSON.stringify(eventData.session || eventData, null, 2));
+          
+          // Check if tools were accepted
+          if (eventData.session?.tools) {
+            console.log(`✅ Tools configured: ${eventData.session.tools.length} tools`);
+          } else {
+            console.warn(`⚠️ No tools in session response - tools may not be supported or configured properly`);
+          }
+          
           // Now it's safe to set up the microphone
           setupAliyunMicrophone().catch(err => {
             console.error("Failed to set up microphone:", err);
@@ -413,24 +431,94 @@ export default function App() {
         });
         
         const result = await response.json();
+        console.log("Knowledge search result:", result);
         
-        // Note: Aliyun may not support conversation.item.create for tool responses
-        // The tool call result is displayed in the UI, but we don't send it back to the API
-        // as Aliyun's protocol may differ from OpenAI's
-        console.log("Knowledge search completed:", {
-          success: result.success,
-          text_chunks: result.knowledge.text_chunks || 0,
-          related_images: result.knowledge.related_images || 0
-        });
+        // Send the search result back to the AI
+        if (webSocket.current && webSocket.current.readyState === WebSocket.OPEN) {
+          const toolResponse = {
+            type: "conversation.item.create",
+            item: {
+              type: "function_call_output",
+              call_id: output.call_id,
+              output: JSON.stringify({
+                success: result.success,
+                message: result.message || "Knowledge retrieved successfully",
+                knowledge_found: result.knowledge.text_chunks > 0,
+                context_text: result.knowledge.context_text,
+                sources: result.knowledge.sources,
+                text_chunks: result.knowledge.text_chunks || 0,
+                related_images: result.knowledge.related_images || 0,
+                images: result.knowledge.images || []
+              })
+            }
+          };
+          
+          console.log("Sending tool response back to AI:", toolResponse);
+          webSocket.current.send(JSON.stringify(toolResponse));
+          
+          // Trigger response generation
+          const responseCreate = {
+            type: "response.create"
+          };
+          console.log("Triggering response generation after tool call");
+          webSocket.current.send(JSON.stringify(responseCreate));
+        }
       } catch (error) {
         console.error("Error in knowledge search:", error);
+        
+        // Send error response back to AI
+        if (webSocket.current && webSocket.current.readyState === WebSocket.OPEN) {
+          const errorResponse = {
+            type: "conversation.item.create",
+            item: {
+              type: "function_call_output", 
+              call_id: output.call_id,
+              output: JSON.stringify({
+                success: false,
+                knowledge: { context_text: "", related_images: 0, sources: [] },
+                message: "Knowledge search failed, proceeding without enhancement"
+              })
+            }
+          };
+          webSocket.current.send(JSON.stringify(errorResponse));
+          
+          const responseCreate = {
+            type: "response.create"
+          };
+          webSocket.current.send(JSON.stringify(responseCreate));
+        }
       }
     } else {
       setToolCall(toolCall);
       
-      // Note: Aliyun may not support conversation.item.create for tool responses
-      // The tool call is displayed in the UI
-      console.log(`Tool call ${toolCall.name} executed successfully`);
+      // Handle other tool calls (whiteboard tools)
+      const toolCallOutput = {
+        response: `Tool call ${toolCall.name} executed successfully.`,
+      };
+      
+      // Send tool call response back to AI
+      if (webSocket.current && webSocket.current.readyState === WebSocket.OPEN) {
+        const toolResponse = {
+          type: "conversation.item.create",
+          item: {
+            type: "function_call_output",
+            call_id: output.call_id,
+            output: JSON.stringify(toolCallOutput),
+          },
+        };
+        webSocket.current.send(JSON.stringify(toolResponse));
+        
+        // Trigger response generation
+        setTimeout(() => {
+          if (webSocket.current && webSocket.current.readyState === WebSocket.OPEN) {
+            const responseCreate = {
+              type: "response.create",
+            };
+            webSocket.current.send(JSON.stringify(responseCreate));
+            console.log("Response generation triggered after tool call");
+          }
+        }, 100);
+      }
     }
   }
 

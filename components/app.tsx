@@ -89,15 +89,21 @@ export default function App() {
         setIsSessionActive(true);
         setIsListening(true);
         
-        // Send session configuration (Aliyun format)
-        // Using minimal configuration based on Aliyun documentation
+        // Send session configuration (OpenAI-compatible format for Aliyun)
         const sessionUpdate = {
-          event: "session.update",
-          data: {
-            parameters: {
-              enable_thinking: false,
-              voice: config.voice,
-              format: "pcm"
+          type: "session.update",
+          session: {
+            modalities: ["text", "audio"],
+            instructions: INSTRUCTIONS,
+            voice: config.voice,
+            tools: TOOLS,
+            input_audio_format: "pcm16",
+            output_audio_format: "pcm16",
+            turn_detection: {
+              type: "server_vad",
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 500
             }
           }
         };
@@ -154,8 +160,10 @@ export default function App() {
           audioQueue.current = [];
           nextPlayTime.current = 0;
         } else if (eventType === "response.done") {
+          console.log("📋 Response done - full response:", eventData.response);
           const output = eventData.response?.output?.[0] || eventData.output?.[0];
           if (output) {
+            console.log("📋 Response output item:", output);
             setLogs((prev) => [output, ...prev]);
             if (output?.type === "function_call") {
               handleToolCallFromWebSocket(output);
@@ -277,10 +285,8 @@ export default function App() {
           
           // Send audio data to Aliyun (Aliyun format)
           const audioEvent = {
-            event: "input_audio_buffer.append",
-            data: {
-              audio: btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)))
-            }
+            type: "input_audio_buffer.append",
+            audio: btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)))
           };
           webSocket.current.send(JSON.stringify(audioEvent));
         }
@@ -915,22 +921,29 @@ export default function App() {
     // It causes an error if there's no ongoing response
     // Only cancel if we're interrupting an ongoing response
     
-    // Send text message using input_text_buffer.append (Aliyun format)
-    // Note: Aliyun doesn't use conversation.item.create like OpenAI
-    // Instead, use input_text_buffer.append to send text input
+    // Send text message using conversation.item.create (OpenAI-compatible format)
+    // Aliyun Qwen-Omni-Realtime supports OpenAI-compatible API format
     const messageEvent = {
-      event: "input_text_buffer.append",
-      data: {
-        text: text
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [{
+          type: "input_text",
+          text: text
+        }]
       }
     };
     
     console.log("Sending text message event:", JSON.stringify(messageEvent, null, 2));
     sendClientEvent(messageEvent);
 
-    // Aliyun uses server VAD to automatically trigger responses
-    // No need to manually send response.create event
-    console.log("Text sent - waiting for server VAD to trigger response");
+    // Send response.create to trigger the model to generate a response
+    const responseEvent = {
+      type: "response.create"
+    };
+    console.log("Triggering response generation");
+    sendClientEvent(responseEvent);
 
     console.log("Text message sent successfully");
   }, [isSessionActive, dataChannel, sendClientEvent]);

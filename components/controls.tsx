@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { Mic, MicOff, Wifi, WifiOff, RotateCcw, Send } from "lucide-react";
+import { Mic, MicOff, Wifi, WifiOff, Send } from "lucide-react";
 
 interface ControlsProps {
   isConnected: boolean;
   isListening: boolean;
   connectionState?: string;
-  isReconnecting?: boolean;
   handleConnectClick: () => void;
   handleMicToggleClick: () => void;
   handleSendText: (text: string) => void;
@@ -15,30 +14,33 @@ const Controls: React.FC<ControlsProps> = ({
   isConnected,
   isListening,
   connectionState,
-  isReconnecting,
   handleConnectClick,
   handleMicToggleClick,
   handleSendText,
 }) => {
   const [textInput, setTextInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const handleSendClick = () => {
-    if (textInput.trim() && isConnected) {
+    if (textInput.trim() && isConnected && !isSending) {
+      setIsSending(true);
       handleSendText(textInput.trim());
       setTextInput("");
+      
+      // Reset sending state after a short delay to prevent rapid-fire sends
+      setTimeout(() => {
+        setIsSending(false);
+      }, 500);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && textInput.trim()) {
       e.preventDefault();
       handleSendClick();
     }
   };
   const getConnectionIcon = () => {
-    if (isReconnecting) {
-      return <RotateCcw className="h-6 w-6 text-yellow-500 animate-spin" />;
-    }
     if (isConnected) {
       return <Wifi className="h-6 w-6 text-green-500" />;
     }
@@ -46,8 +48,7 @@ const Controls: React.FC<ControlsProps> = ({
   };
 
   const getConnectionTitle = () => {
-    if (isReconnecting) return "Reconnecting...";
-    if (isConnected) return `Connected (${connectionState})`;
+    if (isConnected) return `Connected (${connectionState}) - Click to disconnect`;
     return "Disconnected - Click to connect";
   };
 
@@ -90,15 +91,21 @@ const Controls: React.FC<ControlsProps> = ({
         />
         <button
           onClick={handleSendClick}
-          disabled={!isConnected || !textInput.trim()}
+          disabled={!isConnected || !textInput.trim() || isSending}
           className={`bg-gradient-to-br from-slate-800 to-slate-900 p-2.5 transition-all duration-200 ${
-            isConnected && textInput.trim() 
+            isConnected && textInput.trim() && !isSending
               ? "cursor-pointer hover:from-slate-700 hover:to-slate-800 text-green-400" 
               : "cursor-not-allowed opacity-50 text-gray-400"
           }`}
-          title={isConnected ? "Send message" : "Connect first to send messages"}
+          title={
+            !isConnected 
+              ? "Connect first to send messages" 
+              : isSending 
+                ? "Sending..." 
+                : "Send message"
+          }
         >
-          <Send className="h-5 w-5" />
+          <Send className={`h-5 w-5 ${isSending ? 'animate-pulse' : ''}`} />
         </button>
       </div>
     </div>

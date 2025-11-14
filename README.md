@@ -8,7 +8,23 @@ pinned: false
 ---
 # 智能助教系统 - AI Intelligent Tutor
 
-基于OpenAI Realtime API的智能助教系统，通过语音交互和智能白板为学生提供个性化的学习体验，并集成了多模态知识检索系统，支持文本和图片的语义搜索。
+基于实时语音 API 的智能助教系统，通过语音交互和智能白板为学生提供个性化的学习体验，并集成了多模态知识检索系统，支持文本和图片的语义搜索。
+
+## 🎯 AI 模型支持
+
+本系统现已支持多种 AI 实时语音模型：
+
+- ✅ **阿里云 Qwen3-Omni-Flash-Realtime** (当前激活)
+  - 优秀的中文语音支持
+  - 快速响应速度
+  - 成本效益高
+  
+- ✅ **OpenAI GPT-Realtime-Mini** (已保留)
+  - 强大的英文能力
+  - 高质量语音合成
+  - 支持 Whisper 转录
+
+> 💡 **快速切换**: 可以在 `lib/constants.ts` 中轻松切换 AI 提供商。详见 [PROVIDER_SWITCH_GUIDE.md](PROVIDER_SWITCH_GUIDE.md)
 
 ## 系统特性
 
@@ -31,7 +47,9 @@ pinned: false
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **UI**: Tailwind CSS
 - **图表**: Chart.js + react-chartjs-2
-- **AI**: OpenAI Realtime API
+- **AI 模型**: 
+  - 阿里云 Qwen3-Omni-Flash-Realtime (当前)
+  - OpenAI GPT-Realtime-Mini (保留)
 - **实时通信**: WebRTC
 - **多模态模型**: CLIP (Contrastive Language-Image Pretraining)
 - **向量检索**: FAISS (Facebook AI Similarity Search)
@@ -86,11 +104,29 @@ pip install -r requirements.txt
 
 ### 2. 环境配置
 
-创建 `.env` 文件并添加 OpenAI API 密钥：
+创建 `.env.local` 文件并添加相应的 API 密钥：
+
+#### 使用阿里云（当前配置）
+
+```env
+# 阿里云 DashScope API Key
+DASHSCOPE_API_KEY=your_dashscope_api_key_here
+DASHSCOPE_WORKSPACE=your_workspace_id_here
+
+# 客户端访问（可选）
+NEXT_PUBLIC_DASHSCOPE_API_KEY=your_dashscope_api_key_here
+NEXT_PUBLIC_DASHSCOPE_WORKSPACE=your_workspace_id_here
+```
+
+**获取阿里云 API Key**: 访问 [阿里云百炼平台](https://help.aliyun.com/zh/model-studio/get-api-key)
+
+#### 使用 OpenAI（保留配置）
 
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
 ```
+
+> 📖 **详细配置指南**: 查看 [ALIYUN_SETUP.md](ALIYUN_SETUP.md) 了解完整的配置说明和切换方法
 
 ### 3. 环境检查
 
@@ -121,13 +157,42 @@ python scripts/knowledge_api.py
 
 API服务器将在 `http://localhost:8000` 启动。
 
-### 6. 运行开发服务器
+### 6. 启动 WebSocket 代理（仅阿里云需要）
+
+如果使用阿里云 Qwen-Omni-Realtime，需要启动 WebSocket 代理服务器：
+
+```bash
+npm run ws-proxy
+```
+
+WebSocket 代理将在 `ws://localhost:8080` 启动。
+
+> 💡 **为什么需要代理？** 浏览器的 WebSocket API 不支持在握手时添加自定义 HTTP 头，但阿里云需要 `Authorization` 头。代理服务器会为你添加这个头。
+
+> 📝 **OpenAI 用户**: 如果使用 OpenAI，不需要启动这个代理服务器。
+
+### 7. 运行开发服务器
 
 ```bash
 npm run dev
 ```
 
 在浏览器中打开 [http://localhost:3000](http://localhost:3000) 查看应用。
+
+### 完整启动流程（阿里云）
+
+在三个不同的终端窗口中运行：
+
+```bash
+# 终端 1: 知识检索 API
+python scripts/knowledge_api.py
+
+# 终端 2: WebSocket 代理
+npm run ws-proxy
+
+# 终端 3: Next.js 开发服务器
+npm run dev
+```
 
 ## 使用方法
 
@@ -300,7 +365,10 @@ curl -X POST "http://localhost:8000/search/image" \
 
 ### 核心组件
 
-1. **OpenAI Realtime API**: 提供实时语音交互和AI助教功能
+1. **实时语音 API**: 
+   - 阿里云 Qwen3-Omni-Flash-Realtime (当前)
+   - OpenAI Realtime API (保留)
+   - 提供实时语音交互和AI助教功能
 2. **CLIP模型**: 多模态编码器，将文本和图片映射到同一向量空间
 3. **FAISS**: 高效的向量相似度搜索库
 4. **FastAPI**: 提供RESTful API接口

@@ -4,7 +4,7 @@ import Controls from "@/components/controls";
 import Whiteboard from "@/components/whiteboard";
 import Logs from "@/components/logs";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { INSTRUCTIONS, TOOLS } from "@/lib/config";
+import { INSTRUCTIONS, TOOLS, TOOLS_OPENAI, TOOLS_STEPFUN } from "@/lib/config";
 import { BASE_URL, MODEL, ACTIVE_PROVIDER, getCurrentConfig } from "@/lib/constants";
 
 type ToolCallOutput = {
@@ -19,6 +19,10 @@ export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [connectionState, setConnectionState] = useState<RTCPeerConnectionState>('new');
+  
+  // Use refs for values that need to be accessed in audio processor callbacks
+  const isListeningRef = useRef<boolean>(false);
+  const isMicrophoneSetupRef = useRef<boolean>(false);
 
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const peerConnection = useRef<RTCPeerConnection | null>(null);
@@ -37,6 +41,10 @@ export default function App() {
   const audioQueue = useRef<string[]>([]);
   const isPlayingAudio = useRef<boolean>(false);
   const nextPlayTime = useRef<number>(0);
+  const currentAudioSource = useRef<AudioBufferSourceNode | null>(null);
+  
+  // Track current response ID for interruption
+  const currentResponseId = useRef<string | null>(null);
 
 
   // Start WebSocket session (for Aliyun and StepFun)
@@ -88,28 +96,34 @@ export default function App() {
         setConnectionState('connected');
         setIsSessionActive(true);
         setIsListening(true);
+        isListeningRef.current = true;
         
-        // Send session configuration (OpenAI-compatible format)
+        // Use appropriate tools format based on provider
+        const toolsToUse = (ACTIVE_PROVIDER === "stepfun" || ACTIVE_PROVIDER === "aliyun") 
+          ? TOOLS_STEPFUN 
+          : TOOLS_OPENAI;
+        
+        // Send session configuration (STEPFUN format)
+        // Note: STEPFUN only supports basic server_vad config
         const sessionUpdate = {
           type: "session.update",
           session: {
             modalities: ["text", "audio"],
             instructions: INSTRUCTIONS,
             voice: config.voice,
-            tools: TOOLS,
+            tools: toolsToUse,
             input_audio_format: "pcm16",
             output_audio_format: "pcm16",
             turn_detection: {
-              type: "server_vad",
-              threshold: 0.5,
-              prefix_padding_ms: 300,
-              silence_duration_ms: 500
+              type: "server_vad"
+              // STEPFUN doesn't document threshold/padding/duration parameters
+              // Using default values by omitting them
             }
           }
         };
         
         ws.send(JSON.stringify(sessionUpdate));
-        console.log(`Session configuration sent (${ACTIVE_PROVIDER} format)`);
+        console.log(`Session configuration sent (${ACTIVE_PROVIDER} format) with ${toolsToUse.length} tools`);
       };
       
       ws.onmessage = async (event) => {
@@ -156,19 +170,37 @@ export default function App() {
         // Handle different event types
         if (eventType === "response.created") {
           // New response starting - clear audio queue to prevent old audio playing
-          console.log("New response starting, clearing audio queue");
+          const responseId = eventData.response?.id || eventData.id;
+          console.log("New response starting, clearing audio queue. Response ID:", responseId);
+          currentResponseId.current = responseId;
           audioQueue.current = [];
           nextPlayTime.current = 0;
         } else if (eventType === "response.done") {
-          console.log("📋 Response done - full response:", eventData.response);
-          const output = eventData.response?.output?.[0] || eventData.output?.[0];
-          if (output) {
-            console.log("📋 Response output item:", output);
-            setLogs((prev) => [output, ...prev]);
-            if (output?.type === "function_call") {
-              handleToolCallFromWebSocket(output);
+          const responseStatus = eventData.response?.status;
+          console.log("📋 Response done - status:", responseStatus);
+          
+          // Clear current response ID
+          currentResponseId.current = null;
+          
+          // Only log completed responses, not cancelled/incomplete ones
+          if (responseStatus === "cancelled" || responseStatus === "incomplete") {
+            console.log("⏹️ Response was interrupted");
+          } else {
+            const output = eventData.response?.output?.[0] || eventData.output?.[0];
+            if (output) {
+              console.log("📋 Response output item:", output);
+              setLogs((prev) => [output, ...prev]);
+              if (output?.type === "function_call") {
+                handleToolCallFromWebSocket(output);
+              }
             }
           }
+        } else if (eventType === "response.cancelled" || eventType === "response.canceled") {
+          // Response was cancelled (either by user interruption or server)
+          console.log("⏹️ Response cancelled event received");
+          // Clear current response ID
+          currentResponseId.current = null;
+          // Audio should already be cleared by speech_started handler
         } else if (eventType === "response.audio.delta") {
           // Handle audio chunks
           const audioData = eventData.delta || eventData.audio;
@@ -187,35 +219,84 @@ export default function App() {
         } else if (eventType === "response.audio_transcript.done") {
           // Log final transcript
           console.log("✅ AI finished saying:", eventData.transcript);
-        } else if (eventType === "error") {
-          // Handle error messages from Aliyun
-          console.warn("⚠️ Aliyun API error event received");
-          console.warn("Full error data:", JSON.stringify(message, null, 2));
+        } else if (eventType === "input_audio_buffer.speech_started") {
+          // User started speaking (VAD detected speech) - interrupt current response
+          console.log("🎤 User started speaking (VAD) - interrupting current response");
           
+          // Cancel current response if there is one
+          if (currentResponseId.current && webSocket.current?.readyState === WebSocket.OPEN) {
+            console.log("⏹️ Cancelling response:", currentResponseId.current);
+            const cancelEvent = {
+              type: "response.cancel"
+            };
+            webSocket.current.send(JSON.stringify(cancelEvent));
+          }
+          
+          // Stop and clear all audio playback immediately
+          if (currentAudioSource.current) {
+            try {
+              currentAudioSource.current.stop();
+              currentAudioSource.current = null;
+            } catch (e) {
+              // Audio source may already be stopped
+            }
+          }
+          
+          // Clear audio queue and reset playback state
+          audioQueue.current = [];
+          isPlayingAudio.current = false;
+          nextPlayTime.current = 0;
+          
+          console.log("✅ Audio playback interrupted and queue cleared");
+        } else if (eventType === "input_audio_buffer.speech_stopped") {
+          // User stopped speaking (VAD detected silence)
+          console.log("🔇 User stopped speaking (VAD)");
+          // With server_vad, the server automatically commits and creates response
+          // No manual action needed from client
+        } else if (eventType === "input_audio_buffer.committed") {
+          // Audio buffer was committed and will be processed
+          console.log("✅ Audio buffer committed (server_vad auto-commit)");
+          // With server_vad, response is automatically created by server
+          // No need to manually send response.create
+        } else if (eventType === "conversation.item.input_audio_transcription.completed") {
+          // User's speech was transcribed
+          const transcript = eventData.transcript || "";
+          console.log("📝 User said:", transcript);
+        } else if (eventType === "error") {
+          // Handle error messages
           const errorDetails = eventData.error || eventData.message || eventData;
           const errorMessage = errorDetails.message || errorDetails.type || "No error details provided";
           const errorCode = errorDetails.code || errorDetails.error_code || "unknown";
           
-          console.warn("Error details:", errorDetails);
-          console.warn("Error message:", errorMessage);
-          console.warn("Error code:", errorCode);
+          // Ignore expected race condition errors
+          const ignoredErrors = [
+            'no ongoing response to cancel', // Race condition when user speaks right as response finishes
+          ];
           
-          // Only use console.error for critical errors that should stop the connection
+          if (ignoredErrors.some(err => errorMessage.includes(err))) {
+            console.log(`ℹ️ Ignoring expected error: ${errorMessage}`);
+            return;
+          }
+          
+          // Only use console.error for critical errors
           const criticalErrors = ['invalid_api_key', 'authentication_failed', 'unauthorized'];
           if (criticalErrors.includes(errorCode)) {
-            console.error("❌ Critical error - connection may fail:", errorMessage);
-            // Optionally close the connection for critical errors
-            // ws.close();
+            console.error("❌ Critical error:", errorMessage);
+            console.error("Full error data:", JSON.stringify(message, null, 2));
           } else {
-            console.warn("⚠️ Non-critical error - continuing:", errorMessage);
+            console.warn("⚠️ Non-critical error:", errorMessage);
           }
         } else if (eventType === "session.updated" || eventType === "session.created") {
           console.log(`Session ${eventType === "session.created" ? "created" : "updated"} successfully`);
-          // Now it's safe to set up the microphone
-          setupAliyunMicrophone().catch(err => {
-            console.error("Failed to set up microphone:", err);
-            console.warn("Continuing without microphone - you can still use text input");
-          });
+          // Only set up microphone once after session is created
+          if (eventType === "session.created" && !isMicrophoneSetupRef.current) {
+            isMicrophoneSetupRef.current = true;
+            setupAliyunMicrophone().catch(err => {
+              console.error("Failed to set up microphone:", err);
+              console.warn("Continuing without microphone - you can still use text input");
+              isMicrophoneSetupRef.current = false;
+            });
+          }
         } else {
           // Log other event types for debugging
           console.log("Other event type:", eventType);
@@ -253,6 +334,8 @@ export default function App() {
   // Set up microphone for Aliyun WebSocket
   async function setupAliyunMicrophone() {
     try {
+      console.log("🎤 Setting up microphone...");
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -263,6 +346,7 @@ export default function App() {
         }
       });
       
+      console.log("✅ Microphone permission granted");
       setAudioStream(stream);
       
       // Create audio context for input processing (16kHz)
@@ -273,9 +357,20 @@ export default function App() {
       const source = inputAudioContext.current.createMediaStreamSource(stream);
       const processor = inputAudioContext.current.createScriptProcessor(4096, 1, 1);
       
+      let audioChunkCount = 0;
+      
       processor.onaudioprocess = (e) => {
-        if (webSocket.current && webSocket.current.readyState === WebSocket.OPEN && isListening) {
+        // Use ref instead of state to avoid closure issues
+        if (webSocket.current && webSocket.current.readyState === WebSocket.OPEN && isListeningRef.current) {
           const inputData = e.inputBuffer.getChannelData(0);
+          
+          // Calculate audio level for debugging
+          let sum = 0;
+          for (let i = 0; i < inputData.length; i++) {
+            sum += Math.abs(inputData[i]);
+          }
+          const avgLevel = sum / inputData.length;
+          
           // Convert float32 to int16 PCM
           const pcm16 = new Int16Array(inputData.length);
           for (let i = 0; i < inputData.length; i++) {
@@ -283,21 +378,28 @@ export default function App() {
             pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
           }
           
-          // Send audio data to Aliyun (Aliyun format)
+          // Send audio data to STEPFUN
           const audioEvent = {
             type: "input_audio_buffer.append",
             audio: btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)))
           };
           webSocket.current.send(JSON.stringify(audioEvent));
+          
+          // Log every 50th chunk to avoid flooding console
+          audioChunkCount++;
+          if (audioChunkCount % 50 === 0) {
+            console.log(`🎵 Sent ${audioChunkCount} audio chunks, current level: ${avgLevel.toFixed(4)}`);
+          }
         }
       };
       
       source.connect(processor);
       processor.connect(inputAudioContext.current.destination);
       
-      console.log("Aliyun microphone setup complete");
+      console.log("✅ Microphone setup complete, audio streaming enabled");
+      console.log("💡 Speak now - audio chunks will be sent to the server");
     } catch (error) {
-      console.error("Error setting up Aliyun microphone:", error);
+      console.error("❌ Error setting up microphone:", error);
       throw error;
     }
   }
@@ -363,6 +465,9 @@ export default function App() {
       source.buffer = audioBuffer;
       source.connect(audioContext.current.destination);
       
+      // Save reference to current audio source for interruption
+      currentAudioSource.current = source;
+      
       // Calculate when to start (to ensure seamless playback)
       const currentTime = audioContext.current.currentTime;
       const startTime = Math.max(currentTime, nextPlayTime.current);
@@ -374,6 +479,10 @@ export default function App() {
       
       // When this chunk finishes, play the next one
       source.onended = () => {
+        // Clear reference when audio finishes naturally
+        if (currentAudioSource.current === source) {
+          currentAudioSource.current = null;
+        }
         processAudioQueue();
       };
       
@@ -589,6 +698,10 @@ export default function App() {
       audioContext.current.close();
       audioContext.current = null;
     }
+    if (inputAudioContext.current) {
+      inputAudioContext.current.close();
+      inputAudioContext.current = null;
+    }
 
     setIsSessionStarted(false);
     setIsSessionActive(false);
@@ -599,6 +712,8 @@ export default function App() {
     }
     setAudioStream(null);
     setIsListening(false);
+    isListeningRef.current = false;
+    isMicrophoneSetupRef.current = false;
     audioTransceiver.current = null;
     setConnectionState('closed');
   }
@@ -628,6 +743,7 @@ export default function App() {
       }
 
       setIsListening(true);
+      isListeningRef.current = true;
       console.log("Microphone started.");
     } catch (error) {
       console.error("Error accessing microphone:", error);
@@ -637,6 +753,7 @@ export default function App() {
   // Replaces the mic track with a placeholder track
   function stopRecording() {
     setIsListening(false);
+    isListeningRef.current = false;
 
     // Stop existing mic tracks so the user's mic is off
     if (audioStream) {
@@ -842,6 +959,7 @@ export default function App() {
         console.log("Data channel opened successfully");
         setIsSessionActive(true);
         setIsListening(true);
+        isListeningRef.current = true;
         setLogs([]);
         
         // Send session config with better error handling

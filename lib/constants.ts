@@ -22,7 +22,7 @@ export const STEPFUN_CONFIG = {
   model: "step-audio-2-mini",
   baseUrl: "wss://api.stepfun.com/v1/realtime",
   sessionUrl: null, // StepFun doesn't use REST session endpoint, uses WebSocket directly
-  voice: "coral" // StepFun voice options
+  voice: "qingchunshaonv" // StepFun voice options
 } as const;
 
 // Current active provider - change this to switch between providers

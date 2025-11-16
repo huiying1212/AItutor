@@ -193,10 +193,24 @@ const toolsDefinition = [
   }
 ];
 
-export const TOOLS = toolsDefinition.map((tool) => ({
+// OpenAI format (flat structure)
+export const TOOLS_OPENAI = toolsDefinition.map((tool) => ({
   type: "function",
   ...tool,
 }));
+
+// STEPFUN/Aliyun format (nested under 'function' property)
+export const TOOLS_STEPFUN = toolsDefinition.map((tool) => ({
+  type: "function",
+  function: {
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters,
+  }
+}));
+
+// Default export for backward compatibility
+export const TOOLS = TOOLS_OPENAI;
 
 export const INSTRUCTIONS = `
 You are an intelligent teaching assistant helping students learn design history through voice interaction and visual whiteboard presentation.

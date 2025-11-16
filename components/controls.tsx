@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Mic, MicOff, Wifi, WifiOff, Send } from "lucide-react";
+import { Mic, MicOff, Wifi, WifiOff, Send, Save } from "lucide-react";
 
 interface ControlsProps {
   isConnected: boolean;
@@ -8,6 +8,8 @@ interface ControlsProps {
   handleConnectClick: () => void;
   handleMicToggleClick: () => void;
   handleSendText: (text: string) => void;
+  handleSaveConversation: () => void;
+  hasMessages: boolean;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -17,9 +19,12 @@ const Controls: React.FC<ControlsProps> = ({
   handleConnectClick,
   handleMicToggleClick,
   handleSendText,
+  handleSaveConversation,
+  hasMessages,
 }) => {
   const [textInput, setTextInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSendClick = () => {
     if (textInput.trim() && isConnected && !isSending) {
@@ -52,6 +57,15 @@ const Controls: React.FC<ControlsProps> = ({
     return "Disconnected - Click to connect";
   };
 
+  const handleSaveClick = async () => {
+    if (!hasMessages || isSaving) return;
+    setIsSaving(true);
+    await handleSaveConversation();
+    setTimeout(() => {
+      setIsSaving(false);
+    }, 1000);
+  };
+
   return (
     <div className="absolute top-4 right-4 flex flex-col items-end z-10 space-y-3">
       <div className="flex items-center space-x-2">
@@ -74,6 +88,15 @@ const Controls: React.FC<ControlsProps> = ({
           ) : (
             <MicOff className="h-6 w-6 text-red-400" />
           )}
+        </div>
+        <div
+          className={`flex bg-gradient-to-br from-slate-800 to-slate-900 p-3 items-center rounded-full transition-all duration-200 shadow-lg ring-2 ring-slate-600/50 ${
+            hasMessages && !isSaving ? "cursor-pointer hover:from-slate-700 hover:to-slate-800 hover:shadow-xl transform hover:scale-105" : "cursor-not-allowed opacity-50"
+          }`}
+          onClick={handleSaveClick}
+          title={hasMessages ? (isSaving ? "Saving..." : "Save conversation history") : "No messages to save"}
+        >
+          <Save className={`h-6 w-6 ${hasMessages ? "text-blue-400" : "text-gray-400"} ${isSaving ? "animate-pulse" : ""}`} />
         </div>
       </div>
       <div className="flex items-center shadow-lg rounded-lg overflow-hidden ring-2 ring-slate-600/50">

@@ -19,6 +19,8 @@ export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [connectionState, setConnectionState] = useState<RTCPeerConnectionState>('new');
+  const sessionId = useRef<string>(`session_${Date.now()}`);
+  const sessionStartTime = useRef<number>(Date.now());
   
   // Use refs for values that need to be accessed in audio processor callbacks
   const isListeningRef = useRef<boolean>(false);
@@ -262,6 +264,21 @@ export default function App() {
           // User's speech was transcribed
           const transcript = eventData.transcript || "";
           console.log("📝 User said:", transcript);
+          
+          // Add user's voice input to logs
+          if (transcript) {
+            const userMessage = {
+              type: "message",
+              role: "user",
+              content: [{
+                type: "input_audio",
+                transcript: transcript
+              }],
+              id: `user_audio_${Date.now()}`,
+              timestamp: new Date().toISOString()
+            };
+            setLogs((prev) => [userMessage, ...prev]);
+          }
         } else if (eventType === "error") {
           // Handle error messages
           const errorDetails = eventData.error || eventData.message || eventData;
@@ -679,7 +696,30 @@ export default function App() {
   }
 
   // Stop current session, clean up peer connection and data channel
-  function stopSession() {
+  async function stopSession() {
+    // Auto-save conversation if there are messages
+    if (logs.length > 0) {
+      try {
+        const response = await fetch("/api/save-conversation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            logs: logs,
+            sessionId: sessionId.current,
+            timestamp: sessionStartTime.current,
+          }),
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+          console.log("Conversation auto-saved on session end:", result.filename);
+        }
+      } catch (error) {
+        console.error("Failed to auto-save conversation:", error);
+      }
+    }
     
     // Clean up WebRTC resources (OpenAI)
     if (dataChannel) {
@@ -716,6 +756,10 @@ export default function App() {
     isMicrophoneSetupRef.current = false;
     audioTransceiver.current = null;
     setConnectionState('closed');
+    
+    // Reset session ID for next session
+    sessionId.current = `session_${Date.now()}`;
+    sessionStartTime.current = Date.now();
   }
 
   // Grabs a new mic track and replaces the placeholder track in the transceiver
@@ -941,6 +985,25 @@ export default function App() {
           if (output?.type === "function_call") {
             handleToolCall(output);
           }
+        } else if (event.type === "conversation.item.input_audio_transcription.completed") {
+          // User's speech was transcribed (OpenAI)
+          const transcript = event.transcript || "";
+          console.log("📝 User said (OpenAI):", transcript);
+          
+          // Add user's voice input to logs
+          if (transcript) {
+            const userMessage = {
+              type: "message",
+              role: "user",
+              content: [{
+                type: "input_audio",
+                transcript: transcript
+              }],
+              id: `user_audio_${Date.now()}`,
+              timestamp: new Date().toISOString()
+            };
+            setLogs((prev) => [userMessage, ...prev]);
+          }
         }
       });
 
@@ -1020,6 +1083,42 @@ export default function App() {
     }
   };
 
+  // Save conversation to file
+  const handleSaveConversation = useCallback(async () => {
+    if (logs.length === 0) {
+      console.log("No messages to save");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/save-conversation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          logs: logs,
+          sessionId: sessionId.current,
+          timestamp: sessionStartTime.current,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log("Conversation saved successfully:", result);
+        // Show success notification
+        alert(`对话记录已保存！\n文件名: ${result.filename}\n消息数: ${result.messageCount}`);
+      } else {
+        console.error("Failed to save conversation:", result.error);
+        alert(`保存失败: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error saving conversation:", error);
+      alert("保存对话记录时发生错误");
+    }
+  }, [logs]);
+
   // Send a text message to the model
   const handleSendText = useCallback((text: string) => {
     // Check if we have an active connection (either WebSocket or DataChannel)
@@ -1034,6 +1133,19 @@ export default function App() {
     }
 
     console.log("Sending text message:", text);
+
+    // Add user's text message to logs
+    const userMessage = {
+      type: "message",
+      role: "user",
+      content: [{
+        type: "input_text",
+        text: text
+      }],
+      id: `user_text_${Date.now()}`,
+      timestamp: new Date().toISOString()
+    };
+    setLogs((prev) => [userMessage, ...prev]);
 
     // Note: Don't send response.cancel before the first message
     // It causes an error if there's no ongoing response
@@ -1075,6 +1187,8 @@ export default function App() {
         handleConnectClick={handleConnectClick}
         handleMicToggleClick={handleMicToggleClick}
         handleSendText={handleSendText}
+        handleSaveConversation={handleSaveConversation}
+        hasMessages={logs.length > 0}
         isConnected={isSessionActive}
         isListening={isListening}
         connectionState={connectionState}

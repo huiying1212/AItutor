@@ -76,6 +76,9 @@ test_api_simple.py
 /temp/
 /tmp/
 
+# 对话记录文件夹
+/conversation_logs/
+
 # Python 包和构建文件
 .eggs/
 build/
